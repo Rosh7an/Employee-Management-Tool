@@ -168,7 +168,7 @@ export function ProfilePage() {
                       </span>
                     </td>
                     <td style={{ color: 'var(--t2)' }}>
-                      {typeof r.reviewerId === 'object' ? r.reviewerId.name : '—'}
+                      {r.reviewerId && typeof r.reviewerId === 'object' ? r.reviewerId.name : '—'}
                     </td>
                     <td style={{ maxWidth: 240, color: 'var(--t2)' }} title={r.notes}>
                       {r.notes.slice(0, 70)}{r.notes.length > 70 ? '…' : ''}

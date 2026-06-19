@@ -1,12 +1,17 @@
 import { z } from 'zod';
 
+const objectIdOrNull = z.preprocess(
+  (v) => (v === '' ? null : v),
+  z.string().min(24).max(24).nullable().optional()
+);
+
 export const createEmployeeSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   phone: z.string().optional(),
-  department: z.string().optional().nullable(),
+  department: objectIdOrNull,
   designation: z.string().min(1),
-  managerId: z.string().optional().nullable(),
+  managerId: objectIdOrNull,
   employmentType: z.enum(['full-time', 'part-time', 'contract']).default('full-time'),
   status: z.enum(['active', 'on-leave', 'terminated']).default('active'),
   dateOfJoining: z.string().or(z.date()).transform((v: string | Date) => new Date(v)).optional().default(() => new Date()),
@@ -22,9 +27,9 @@ export const createEmployeeSchema = z.object({
 export const updateEmployeeSchema = z.object({
   name: z.string().min(2).optional(),
   phone: z.string().optional().nullable(),
-  department: z.string().optional().nullable(),
+  department: objectIdOrNull,
   designation: z.string().min(1).optional(),
-  managerId: z.string().optional().nullable(),
+  managerId: objectIdOrNull,
   employmentType: z.enum(['full-time', 'part-time', 'contract']).optional(),
   status: z.enum(['active', 'on-leave', 'terminated']).optional(),
   dateOfJoining: z

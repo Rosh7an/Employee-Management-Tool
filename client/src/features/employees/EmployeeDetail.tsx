@@ -6,6 +6,7 @@ import { ErrorBanner } from '../../components/ErrorBanner';
 import { StatusLabel } from '../../components/StatusLabel';
 import { useAuthStore } from '../../store/auth.store';
 import { employeesApi, Employee } from './employees.api';
+import { departmentsApi, Department } from '../departments/departments.api';
 import { EmployeeForm } from './EmployeeForm';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 
@@ -15,6 +16,8 @@ export function EmployeeDetail() {
   const { user } = useAuthStore();
   const [editing, setEditing] = useState(false);
   const [confirmTerminate, setConfirmTerminate] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+  const [selectedDept, setSelectedDept] = useState('');
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['employee', id],
@@ -26,6 +29,18 @@ export function EmployeeDetail() {
     mutationFn: () => employeesApi.terminate(id!),
     onSuccess: () => refetch(),
   });
+
+  const transferMutation = useMutation({
+    mutationFn: () => employeesApi.update(id!, { department: selectedDept }),
+    onSuccess: () => { setTransferring(false); refetch(); },
+  });
+
+  const { data: deptData } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => departmentsApi.list().then((r) => r.data),
+    enabled: transferring,
+  });
+  const departments: Department[] = deptData?.data?.departments || deptData?.data || [];
 
   const emp = data;
 
@@ -49,6 +64,7 @@ export function EmployeeDetail() {
   }
 
   const canEdit = user?.role === 'admin' || user?.role === 'manager';
+  const canTransfer = user?.role === 'admin' && emp.status !== 'terminated';
   const canTerminate = user?.role === 'admin' && emp.status !== 'terminated';
 
   return (
@@ -59,6 +75,11 @@ export function EmployeeDetail() {
           <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
             <button className="btn btn-ghost btn-sm" onClick={() => navigate('/employees')}>← Back</button>
             {canEdit && <button className="btn btn-outline btn-sm" onClick={() => setEditing(true)}>Edit</button>}
+            {canTransfer && (
+              <button className="btn btn-outline btn-sm" onClick={() => { setSelectedDept(emp.department?._id || ''); setTransferring(true); }}>
+                Transfer
+              </button>
+            )}
             {canTerminate && (
               <button className="btn btn-danger btn-sm" onClick={() => setConfirmTerminate(true)}>Terminate</button>
             )}
@@ -97,6 +118,50 @@ export function EmployeeDetail() {
         onCancel={() => setConfirmTerminate(false)}
         isDestructive={true}
       />
+
+      {transferring && (
+        <div className="modal-overlay" onClick={() => setTransferring(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <h2 className="modal-title">Transfer Department</h2>
+            <p style={{ color: 'var(--t2)', marginBottom: 'var(--sp-4)', fontSize: 14, lineHeight: 1.5 }}>
+              Moving <strong>{emp.name}</strong> from{' '}
+              <strong>{emp.department?.name || 'No Department'}</strong> to:
+            </p>
+            <div className="input-group" style={{ marginBottom: 'var(--sp-2)' }}>
+              <label className="input-label">New Department</label>
+              <select
+                className="input"
+                value={selectedDept}
+                onChange={(e) => setSelectedDept(e.target.value)}
+              >
+                <option value="">— Select department —</option>
+                {departments.map((d) => (
+                  <option key={d._id} value={d._id} disabled={d._id === emp.department?._id}>
+                    {d.name}{d._id === emp.department?._id ? ' (current)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {transferMutation.isError && (
+              <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 'var(--sp-3)' }}>
+                Transfer failed. Please try again.
+              </p>
+            )}
+            <div className="modal-actions" style={{ marginTop: 'var(--sp-5)' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setTransferring(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-sm"
+                disabled={!selectedDept || selectedDept === emp.department?._id || transferMutation.isPending}
+                onClick={() => transferMutation.mutate()}
+              >
+                {transferMutation.isPending ? <span className="spinner" /> : 'Confirm Transfer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

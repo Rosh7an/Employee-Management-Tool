@@ -91,6 +91,9 @@ export async function update(
   if (role === 'admin') {
     allowedFields = Object.keys(input) as (keyof UpdateEmployeeInput)[];
   } else if (role === 'manager') {
+    if (input.status === 'terminated') {
+      throw ApiError.forbidden('Only admins can terminate employees.');
+    }
     allowedFields = ['status'];
   } else {
     // employee: own contact fields only

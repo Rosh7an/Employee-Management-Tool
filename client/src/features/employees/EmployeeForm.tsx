@@ -108,9 +108,6 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
   if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
     errors.email = 'Please enter a valid email address.';
   }
-  if (!form.phone || form.phone.trim().length < 1) {
-    errors.phone = 'Phone is required.';
-  }
   if (!form.designation || form.designation.trim().length < 1) {
     errors.designation = 'Designation is required.';
   }
@@ -130,7 +127,7 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
   const handleSubmit = (e: { preventDefault: () => void }) => {
     e.preventDefault();
     if (!isValid) {
-      setTouched({ name: true, email: true, phone: true, designation: true, department: true, salary: true, dateOfJoining: true });
+      setTouched({ name: true, email: true, designation: true, department: true, salary: true, dateOfJoining: true });
       return;
     }
     if (isDirty) {
@@ -187,16 +184,13 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
           {touched.designation && errors.designation && <span className="input-error-msg">{errors.designation}</span>}
         </div>
         <div className="input-group">
-          <label className="input-label">Phone</label>
+          <label className="input-label">Phone <span style={{ color: 'var(--t3)', fontWeight: 400 }}>(optional)</span></label>
           <input
-            className={`input ${touched.phone && errors.phone ? 'has-error' : ''}`}
+            className="input"
             name="phone"
             value={form.phone}
             onChange={(e) => set('phone', e.target.value)}
-            onBlur={() => handleBlur('phone')}
-            required
           />
-          {touched.phone && errors.phone && <span className="input-error-msg">{errors.phone}</span>}
         </div>
       </div>
 
