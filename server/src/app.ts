@@ -1,7 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
 import { env } from './config/env';
 import { errorHandler } from './shared/middleware/errorHandler';
+import { swaggerSpec } from './swagger';
 
 import authRoutes from './modules/auth/auth.routes';
 import employeeRoutes from './modules/employees/employees.routes';
@@ -25,6 +27,8 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.use('/api/docs', swaggerUi.serve as any, swaggerUi.setup(swaggerSpec) as any);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);

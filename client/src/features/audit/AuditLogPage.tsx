@@ -6,22 +6,46 @@ import { EmptyState } from '../../components/EmptyState';
 import { Pagination } from '../../components/Pagination';
 import { auditApi, AuditLog } from './audit.api';
 
+const ROLES = ['admin', 'manager', 'employee'];
+const todayStr = new Date().toISOString().slice(0, 10);
+
 export function AuditLogPage() {
   const [page, setPage] = useState(1);
-  const [action, setAction] = useState('');
+  const [search, setSearch] = useState('');
+  const [actorRole, setActorRole] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+
+  function resetPage() { setPage(1); }
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['audit', page, action],
+    queryKey: ['audit', page, search, actorRole, from, to],
     queryFn: () =>
-      auditApi.list({ page, action: action || undefined }).then((r) => r.data),
+      auditApi.list({
+        page,
+        search: search || undefined,
+        actorRole: actorRole || undefined,
+        from: from || undefined,
+        to: to || undefined,
+      }).then((r) => r.data),
   });
 
   const logs: AuditLog[] = data?.data || [];
   const meta = data?.meta;
 
   function actorName(log: AuditLog) {
-    if (typeof log.actorId === 'object') return log.actorId.name;
+    if (log.actorId && typeof log.actorId === 'object') return log.actorId.name;
     return '—';
+  }
+
+  const hasFilters = search || actorRole || from || to;
+
+  function clearFilters() {
+    setSearch('');
+    setActorRole('');
+    setFrom('');
+    setTo('');
+    setPage(1);
   }
 
   return (
@@ -31,11 +55,43 @@ export function AuditLogPage() {
       <div className="filter-bar">
         <input
           className="input"
-          style={{ maxWidth: 220 }}
-          placeholder="Filter by action…"
-          value={action}
-          onChange={(e) => { setAction(e.target.value); setPage(1); }}
+          style={{ maxWidth: 280 }}
+          placeholder="Search actor, action, resource…"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); resetPage(); }}
         />
+        <select
+          className="input"
+          style={{ maxWidth: 130 }}
+          value={actorRole}
+          onChange={(e) => { setActorRole(e.target.value); resetPage(); }}
+        >
+          <option value="">All roles</option>
+          {ROLES.map((r) => (
+            <option key={r} value={r} style={{ textTransform: 'capitalize' }}>{r}</option>
+          ))}
+        </select>
+        <input
+          className="input"
+          type="date"
+          style={{ maxWidth: 150 }}
+          title="From date"
+          max={todayStr}
+          value={from}
+          onChange={(e) => { setFrom(e.target.value); resetPage(); }}
+        />
+        <input
+          className="input"
+          type="date"
+          style={{ maxWidth: 150 }}
+          title="To date"
+          max={todayStr}
+          value={to}
+          onChange={(e) => { setTo(e.target.value); resetPage(); }}
+        />
+        {hasFilters && (
+          <button className="btn btn-ghost btn-sm" onClick={clearFilters}>Clear</button>
+        )}
       </div>
 
       {isLoading && <div className="loading-page">Loading…</div>}

@@ -56,9 +56,10 @@ function ChartTooltip({ active, payload, label }: any) {
 const emptyPwForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
 
 export function ProfilePage() {
-  const { user } = useAuthStore();
+  const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
   const [showPwForm, setShowPwForm] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [pwForm, setPwForm] = useState(emptyPwForm);
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState(false);
@@ -123,11 +124,34 @@ export function ProfilePage() {
 
   const roleLabel: Record<string, string> = { admin: 'Admin', manager: 'Manager', employee: 'Employee' };
 
+  function closeModal() {
+    setShowPwForm(false);
+    setPwError('');
+    setPwSuccess(false);
+    setPwForm(emptyPwForm);
+  }
+
   return (
+    <>
     <PageWrapper
       title="My Profile"
       action={
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>← Back</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setShowPwForm(true)}
+          >
+            Change Password
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ color: 'var(--danger, #b91c1c)' }}
+            onClick={() => setShowLogoutModal(true)}
+          >
+            Logout
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>← Back</button>
+        </div>
       }
     >
       <div className="detail-section">
@@ -150,7 +174,7 @@ export function ProfilePage() {
             <div className="detail-field"><label>Status</label><span><StatusLabel status={emp.status as 'active' | 'on-leave' | 'terminated'} /></span></div>
             <div className="detail-field"><label>Designation</label><span style={{ fontWeight: 500 }}>{emp.designation}</span></div>
             <div className="detail-field"><label>Department</label><span>{emp.department?.name || '—'}</span></div>
-            <div className="detail-field"><label>Reports to</label><span>{emp.managerId?.name || '—'}</span></div>
+            {!user?.isDirector && <div className="detail-field"><label>Reports to</label><span>{emp.managerId?.name || '—'}</span></div>}
             <div className="detail-field"><label>Employment Type</label><span style={{ textTransform: 'capitalize' }}>{emp.employmentType}</span></div>
             <div className="detail-field"><label>Date of Joining</label><span>{new Date(emp.dateOfJoining).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span></div>
             {emp.phone && <div className="detail-field"><label>Phone</label><span>{emp.phone}</span></div>}
@@ -221,27 +245,42 @@ export function ProfilePage() {
         </div>
       )}
 
-      {/* Change password */}
-      <div className="detail-section" style={{ marginTop: 'var(--sp-5)' }}>
-        <div className="detail-section-header">
-          <h2>Security</h2>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => { setShowPwForm((v) => !v); setPwError(''); setPwSuccess(false); setPwForm(emptyPwForm); }}
-          >
-            {showPwForm ? 'Cancel' : 'Change Password'}
-          </button>
-        </div>
+    </PageWrapper>
 
-        {showPwForm && (
+    {showLogoutModal && (
+      <div className="modal-overlay" onClick={() => setShowLogoutModal(false)}>
+        <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+          <h2 className="modal-title">Logout</h2>
+          <p className="modal-message">Are you sure you want to log out of your account?</p>
+          <div className="modal-actions">
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowLogoutModal(false)}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={() => { clearAuth(); navigate('/login'); }}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showPwForm && (
+      <div className="modal-overlay" onClick={closeModal}>
+        <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+          <h2 className="modal-title">Change Password</h2>
+
           <form onSubmit={handlePwSubmit} style={{ margin: 0 }}>
-            {pwError && <ErrorBanner error={null} message={pwError} />}
+            {pwError && <div style={{ marginBottom: 14 }}><ErrorBanner error={null} message={pwError} /></div>}
             {pwSuccess && (
-              <div style={{ padding: '10px 14px', background: '#d1fae5', color: '#065f46', borderRadius: 6, fontSize: 13.5, fontWeight: 500, marginBottom: 16 }}>
+              <div style={{ padding: '10px 14px', background: '#d1fae5', color: '#065f46', borderRadius: 6, fontSize: 13.5, fontWeight: 500, marginBottom: 14 }}>
                 Password changed successfully.
               </div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', columnGap: 16, rowGap: 0, alignItems: 'start', marginBottom: 16 }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
               <div className="input-group">
                 <label className="input-label">Current Password</label>
                 <input
@@ -276,22 +315,23 @@ export function ProfilePage() {
                 />
               </div>
             </div>
-            <button
-              className="form-btn"
-              type="submit"
-              disabled={!pwForm.currentPassword || !pwForm.newPassword || !pwForm.confirmPassword || changePwMutation.isPending}
-            >
-              {changePwMutation.isPending ? <span className="spinner" /> : 'Update Password'}
-            </button>
-          </form>
-        )}
 
-        {!showPwForm && (
-          <p style={{ fontSize: 13.5, color: 'var(--t3)', margin: 0 }}>
-            Use a strong password with at least 8 characters.
-          </p>
-        )}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-ghost btn-sm" onClick={closeModal}>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-sm"
+                disabled={!pwForm.currentPassword || !pwForm.newPassword || !pwForm.confirmPassword || changePwMutation.isPending}
+              >
+                {changePwMutation.isPending ? <span className="spinner" /> : 'Update Password'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </PageWrapper>
+    )}
+    </>
   );
 }

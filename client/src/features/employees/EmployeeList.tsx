@@ -18,12 +18,24 @@ export function EmployeeList() {
   const [statusFilter, setStatusFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [searchInput, setSearchInput] = useState('');
+  const [showUnassigned, setShowUnassigned] = useState(false);
+
+  const { data: unassignedData } = useQuery({
+    queryKey: ['employees-unassigned-count'],
+    queryFn: () => employeesApi.list({ unassigned: true, limit: 1 }).then((r) => r.data),
+    enabled: user?.role === 'admin',
+  });
+  const unassignedCount: number = unassignedData?.meta?.total ?? 0;
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['employees', page, search, statusFilter],
+    queryKey: ['employees', page, search, statusFilter, showUnassigned],
     queryFn: () =>
-      employeesApi.list({ page, limit: 15, search: search || undefined, status: statusFilter || undefined })
-        .then((r) => r.data),
+      employeesApi.list({
+        page, limit: 15,
+        search: search || undefined,
+        status: statusFilter || undefined,
+        unassigned: showUnassigned || undefined,
+      }).then((r) => r.data),
   });
 
   const employees: Employee[] = data?.data?.employees || data?.data || [];
@@ -47,6 +59,25 @@ export function EmployeeList() {
   return (
     <PageWrapper title="Employees">
       {error && <ErrorBanner error={error} />}
+
+      {user?.role === 'admin' && unassignedCount > 0 && !showUnassigned && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8,
+          padding: '10px 16px', marginBottom: 20,
+        }}>
+          <span style={{ fontSize: 13.5, color: '#92400e', fontWeight: 500 }}>
+            {unassignedCount} employee{unassignedCount !== 1 ? 's' : ''} registered without a department
+          </span>
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ borderColor: '#fbbf24', color: '#92400e' }}
+            onClick={() => { setShowUnassigned(true); setStatusFilter(''); setSearch(''); setSearchInput(''); setPage(1); }}
+          >
+            View
+          </button>
+        </div>
+      )}
 
       <div className="filter-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 'var(--sp-4)' }}>
         <div style={{ display: 'flex', gap: 'var(--sp-3)', flex: 1, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -78,6 +109,15 @@ export function EmployeeList() {
             <option value="terminated">Terminated</option>
           </select>
         </div>
+        {showUnassigned && (
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ borderColor: '#fbbf24', color: '#92400e', background: '#fefce8' }}
+            onClick={() => { setShowUnassigned(false); setPage(1); }}
+          >
+            Pending Setup ✕
+          </button>
+        )}
         {user?.role === 'admin' && (
           <button className="btn btn-sm" onClick={() => setShowForm(true)}>+ Add Employee</button>
         )}

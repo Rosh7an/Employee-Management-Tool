@@ -22,6 +22,7 @@ export interface ListParams {
   search?: string;
   department?: string;
   status?: string;
+  unassigned?: boolean;
 }
 
 export interface CreateEmployeeInput {

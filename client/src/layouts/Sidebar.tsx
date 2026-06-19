@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
-import { ConfirmationModal } from '../components/ConfirmationModal';
 
 const NAV = [
   { to: '/dashboard',   label: 'Dashboard',   icon: '⌗' },
@@ -21,7 +20,7 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('sidebar-collapsed') === 'true';
   });
-  const [showSignoutModal, setShowSignoutModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const toggleCollapse = () => {
     setIsCollapsed((prev) => {
@@ -93,9 +92,9 @@ export function Sidebar() {
                 </div>
                 <button
                   className="sidebar-signout"
-                  onClick={(e) => { e.stopPropagation(); setShowSignoutModal(true); }}
-                  title="Sign out"
-                  aria-label="Sign out"
+                  onClick={(e) => { e.stopPropagation(); setShowLogoutModal(true); }}
+                  title="Logout"
+                  aria-label="Logout"
                 >
                   <LogOut size={15} />
                 </button>
@@ -105,18 +104,25 @@ export function Sidebar() {
         </div>
       </aside>
 
-      <ConfirmationModal
-        isOpen={showSignoutModal}
-        title="Sign Out"
-        message="Are you sure you want to sign out of the system?"
-        confirmLabel="Sign Out"
-        onConfirm={() => {
-          setShowSignoutModal(false);
-          clearAuth();
-        }}
-        onCancel={() => setShowSignoutModal(false)}
-        isDestructive={true}
-      />
+      {showLogoutModal && (
+        <div className="modal-overlay" onClick={() => setShowLogoutModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">Logout</h2>
+            <p className="modal-message">Are you sure you want to log out of the system?</p>
+            <div className="modal-actions">
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowLogoutModal(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-sm btn-danger"
+                onClick={() => { clearAuth(); navigate('/login'); }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

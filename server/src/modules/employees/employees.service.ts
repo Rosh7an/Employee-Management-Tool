@@ -21,7 +21,11 @@ export async function getAll(req: Request) {
   const filter: Record<string, unknown> = {};
 
   if (req.query.status) filter.status = req.query.status;
-  if (req.query.department) filter.department = req.query.department;
+  if (req.query.unassigned === 'true') {
+    filter.department = null;
+  } else if (req.query.department) {
+    filter.department = req.query.department;
+  }
   if (req.query.search) {
     const re = new RegExp(String(req.query.search), 'i');
     filter.$or = [{ name: re }, { designation: re }, { employeeId: re }];

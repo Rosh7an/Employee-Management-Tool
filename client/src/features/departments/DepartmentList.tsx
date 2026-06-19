@@ -121,7 +121,7 @@ export function DepartmentList() {
         {isAdmin && (
           <div style={{ marginBottom: 24, padding: 24 }}>
             <div className="form-section-label">New Department</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', columnGap: 16, rowGap: 0, alignItems: 'start', marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', columnGap: 16, rowGap: 0, alignItems: 'start' }}>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Name</label>
                 <input
@@ -162,14 +162,18 @@ export function DepartmentList() {
                   ))}
                 </select>
               </div>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                <div style={{ marginBottom: 6, visibility: 'hidden', fontSize: 13 }}>_</div>
+                <button
+                  className="form-btn"
+                  style={{ height: 44, margin: 0 }}
+                  onClick={handleCreate}
+                  disabled={createMutation.isPending || Object.keys(createErrors).length > 0}
+                >
+                  {createMutation.isPending ? <span className="spinner" /> : '+ Add'}
+                </button>
+              </div>
             </div>
-            <button
-              className="form-btn"
-              onClick={handleCreate}
-              disabled={createMutation.isPending}
-            >
-              {createMutation.isPending ? <span className="spinner" /> : '+ Add'}
-            </button>
           </div>
         )}
 

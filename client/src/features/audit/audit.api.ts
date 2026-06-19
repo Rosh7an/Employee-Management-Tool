@@ -12,7 +12,14 @@ export interface AuditLog {
   timestamp: string;
 }
 
+export interface AuditListParams {
+  page?: number;
+  search?: string;
+  actorRole?: string;
+  from?: string;
+  to?: string;
+}
+
 export const auditApi = {
-  list: (params?: { page?: number; action?: string }) =>
-    api.get('/audit', { params }),
+  list: (params?: AuditListParams) => api.get('/audit', { params }),
 };
