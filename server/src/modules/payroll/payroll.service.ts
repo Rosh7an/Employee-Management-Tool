@@ -72,5 +72,12 @@ export async function getByEmployee(targetEmployeeId: string, req: Request) {
 export async function create(input: CreatePayrollInput) {
   const emp = await Employee.findById(input.employeeId).lean();
   if (!emp) throw ApiError.notFound('Employee not found.');
-  return Payroll.create(input);
+
+  const existing = await Payroll.findOne({ employeeId: input.employeeId, payPeriod: input.payPeriod }).lean();
+  if (existing) {
+    throw ApiError.conflict(`A payroll record for "${input.payPeriod}" already exists for this employee.`);
+  }
+
+  const netPay = input.base + input.bonuses - input.deductions;
+  return Payroll.create({ ...input, netPay });
 }

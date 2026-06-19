@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -9,6 +10,8 @@ import { ErrorBanner } from '../../components/ErrorBanner';
 import { StatusLabel } from '../../components/StatusLabel';
 import { useAuthStore } from '../../store/auth.store';
 import api from '../../lib/axios';
+import { authApi } from './auth.api';
+import { extractApiError } from '../../lib/axios';
 import { performanceApi, PerformanceReview } from '../performance/performance.api';
 
 interface MeResponse {
@@ -50,9 +53,46 @@ function ChartTooltip({ active, payload, label }: any) {
   );
 }
 
+const emptyPwForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+
 export function ProfilePage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const [showPwForm, setShowPwForm] = useState(false);
+  const [pwForm, setPwForm] = useState(emptyPwForm);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState(false);
+
+  const changePwMutation = useMutation({
+    mutationFn: () => authApi.changePassword(pwForm),
+    onSuccess: () => {
+      setPwForm(emptyPwForm);
+      setPwError('');
+      setPwSuccess(true);
+      setTimeout(() => setPwSuccess(false), 4000);
+    },
+    onError: (e: unknown) => {
+      setPwError(extractApiError(e, 'Password change failed.').message);
+    },
+  });
+
+  function handlePwSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError('');
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      setPwError('Passwords do not match.');
+      return;
+    }
+    if (pwForm.newPassword.length < 8) {
+      setPwError('New password must be at least 8 characters.');
+      return;
+    }
+    if (pwForm.currentPassword === pwForm.newPassword) {
+      setPwError('New password must differ from your current password.');
+      return;
+    }
+    changePwMutation.mutate();
+  }
 
   const { data: meData, isLoading, error } = useQuery({
     queryKey: ['me'],
@@ -180,6 +220,78 @@ export function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Change password */}
+      <div className="detail-section" style={{ marginTop: 'var(--sp-5)' }}>
+        <div className="detail-section-header">
+          <h2>Security</h2>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => { setShowPwForm((v) => !v); setPwError(''); setPwSuccess(false); setPwForm(emptyPwForm); }}
+          >
+            {showPwForm ? 'Cancel' : 'Change Password'}
+          </button>
+        </div>
+
+        {showPwForm && (
+          <form onSubmit={handlePwSubmit} style={{ margin: 0 }}>
+            {pwError && <ErrorBanner error={null} message={pwError} />}
+            {pwSuccess && (
+              <div style={{ padding: '10px 14px', background: '#d1fae5', color: '#065f46', borderRadius: 6, fontSize: 13.5, fontWeight: 500, marginBottom: 16 }}>
+                Password changed successfully.
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', columnGap: 16, rowGap: 0, alignItems: 'start', marginBottom: 16 }}>
+              <div className="input-group">
+                <label className="input-label">Current Password</label>
+                <input
+                  className="input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={pwForm.currentPassword}
+                  onChange={(e) => setPwForm((p) => ({ ...p, currentPassword: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="input-group">
+                <label className="input-label">New Password</label>
+                <input
+                  className="input"
+                  type="password"
+                  autoComplete="new-password"
+                  value={pwForm.newPassword}
+                  onChange={(e) => setPwForm((p) => ({ ...p, newPassword: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="input-group">
+                <label className="input-label">Confirm New Password</label>
+                <input
+                  className="input"
+                  type="password"
+                  autoComplete="new-password"
+                  value={pwForm.confirmPassword}
+                  onChange={(e) => setPwForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            <button
+              className="form-btn"
+              type="submit"
+              disabled={!pwForm.currentPassword || !pwForm.newPassword || !pwForm.confirmPassword || changePwMutation.isPending}
+            >
+              {changePwMutation.isPending ? <span className="spinner" /> : 'Update Password'}
+            </button>
+          </form>
+        )}
+
+        {!showPwForm && (
+          <p style={{ fontSize: 13.5, color: 'var(--t3)', margin: 0 }}>
+            Use a strong password with at least 8 characters.
+          </p>
+        )}
+      </div>
     </PageWrapper>
   );
 }

@@ -7,6 +7,7 @@ const router = Router();
 
 router.post('/register', asyncWrapper(controller.register));
 router.post('/login', asyncWrapper(controller.login));
+router.post('/change-password', authenticate, asyncWrapper(controller.changePassword));
 router.get('/me', authenticate, asyncWrapper(controller.getMe));
 
 export default router;

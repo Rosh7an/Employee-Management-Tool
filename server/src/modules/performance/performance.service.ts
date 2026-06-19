@@ -49,6 +49,14 @@ export async function create(input: CreatePerformanceInput, reviewerId: string, 
     // This is already checked in middleware
   }
 
+  const duplicate = await PerformanceReview.findOne({
+    employeeId: input.employeeId,
+    period: input.period,
+  }).lean();
+  if (duplicate) {
+    throw ApiError.conflict(`A review for "${input.period}" already exists for this employee.`);
+  }
+
   return PerformanceReview.create({ ...input, reviewerId });
 }
 

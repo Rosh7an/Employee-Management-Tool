@@ -179,6 +179,7 @@ export function MilestonePage() {
                 type="date"
                 style={{ height: 44 }}
                 required
+                min={new Date().toISOString().slice(0, 10)}
                 value={form.targetDate}
                 onChange={(e) => setForm((p) => ({ ...p, targetDate: e.target.value }))}
               />
@@ -207,7 +208,7 @@ export function MilestonePage() {
                 className="input"
                 style={{ height: 88, resize: 'none' }}
                 value={form.description}
-                placeholder="Brief description…"
+                placeholder="What does this milestone aim to achieve and how will success be measured?"
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
               />
 

@@ -212,6 +212,7 @@ export function PerformancePage() {
                     className="input"
                     style={{ height: 44 }}
                     type="date"
+                    min={new Date().toISOString().slice(0, 10)}
                     value={quarterDueDate}
                     onChange={(e) => setQuarterDueDate(e.target.value)}
                     required

@@ -6,7 +6,6 @@ export const createPayrollSchema = z.object({
   base: z.number().min(0),
   bonuses: z.number().min(0).default(0),
   deductions: z.number().min(0).default(0),
-  netPay: z.number().min(0),
   currency: z.string().default('USD'),
 });
 

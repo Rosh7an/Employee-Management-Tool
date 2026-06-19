@@ -144,7 +144,7 @@ export function DepartmentList() {
                   value={form.description}
                   onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                   onBlur={() => setFormTouched((p) => ({ ...p, description: true }))}
-                  placeholder={form.managerId ? 'Required with manager' : 'Optional'}
+                  placeholder="e.g. Responsible for building and shipping all customer-facing products"
                 />
                 {formTouched.description && createErrors.description && <span className="input-error-msg">{createErrors.description}</span>}
               </div>
@@ -217,7 +217,7 @@ export function DepartmentList() {
                             className={`input ${editTouched.description && editErrors.description ? 'has-error' : ''}`}
                             value={editForm.description}
                             style={{ width: 200 }}
-                            placeholder={editForm.managerId ? 'Required with manager' : 'Optional'}
+                            placeholder="e.g. Responsible for building and shipping all customer-facing products"
                             onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
                             onBlur={() => setEditTouched((p) => ({ ...p, description: true }))}
                           />

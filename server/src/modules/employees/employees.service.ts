@@ -96,8 +96,17 @@ export async function update(
     }
     allowedFields = ['status'];
   } else {
-    // employee: own contact fields only
-    allowedFields = ['phone', 'name'];
+    // employee: phone only — name changes require admin/HR
+    allowedFields = ['phone'];
+  }
+
+  // Guard against email collision before mutating
+  if (role === 'admin' && input.email) {
+    const emailConflict = await Employee.findOne({
+      email: input.email.toLowerCase(),
+      _id: { $ne: emp._id },
+    }).lean();
+    if (emailConflict) throw ApiError.conflict('An employee with this email already exists.', 'email');
   }
 
   for (const key of allowedFields) {
@@ -107,6 +116,15 @@ export async function update(
   }
 
   await emp.save();
+
+  // Keep the linked User account email in sync
+  if (role === 'admin' && input.email) {
+    await User.findOneAndUpdate(
+      { employeeId: emp._id },
+      { email: input.email.toLowerCase() }
+    );
+  }
+
   return emp;
 }
 

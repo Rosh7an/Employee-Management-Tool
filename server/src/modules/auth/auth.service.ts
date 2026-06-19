@@ -4,7 +4,7 @@ import User from '../../models/User';
 import Employee from '../../models/Employee';
 import { env } from '../../config/env';
 import { ApiError } from '../../shared/utils/ApiError';
-import type { RegisterInput, LoginInput } from './auth.schema';
+import type { RegisterInput, LoginInput, ChangePasswordInput } from './auth.schema';
 
 function generateToken(payload: {
   userId: string;
@@ -87,6 +87,17 @@ export async function login(input: LoginInput) {
     token,
     user: { _id: user._id, name: user.name, email: user.email, role: user.role, isDirector: user.isDirector ?? false },
   };
+}
+
+export async function changePassword(userId: string, input: ChangePasswordInput) {
+  const user = await User.findById(userId);
+  if (!user) throw ApiError.notFound('User not found.');
+
+  const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+  if (!valid) throw ApiError.unauthenticated('Current password is incorrect.');
+
+  user.passwordHash = await bcrypt.hash(input.newPassword, 10);
+  await user.save();
 }
 
 export async function getMe(userId: string): Promise<{ user: Record<string, unknown>; employee: Record<string, unknown> | null }> {
