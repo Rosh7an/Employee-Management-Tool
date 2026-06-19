@@ -30,7 +30,7 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
     name: employee?.name || '',
     email: employee?.email || '',
     phone: employee?.phone || '',
-    designation: employee?.designation || '',
+    designation: employee?.designation === 'Pending' ? '' : (employee?.designation || ''),
     department: (employee?.department && typeof employee.department === 'object')
       ? employee.department._id
       : '',
@@ -102,11 +102,9 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
   }
 
   const errors: Record<string, string> = {};
-  if (!form.name || form.name.trim().length < 2) {
-    errors.name = 'Name must be at least 2 characters.';
-  }
-  if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    errors.email = 'Please enter a valid email address.';
+  if (!isEdit) {
+    if (!form.name || form.name.trim().length < 2) errors.name = 'Name must be at least 2 characters.';
+    if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = 'Please enter a valid email address.';
   }
   if (!form.designation || form.designation.trim().length < 1) {
     errors.designation = 'Designation is required.';
@@ -139,36 +137,52 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
     <form className="form" onSubmit={handleSubmit}>
       {error && <ErrorBanner error={null} message={error} />}
 
-      <div className="form-row">
-        <div className="input-group">
-          <label className="input-label">Name</label>
-          <input
-            className={`input ${touched.name && errors.name ? 'has-error' : ''}`}
-            name="name"
-            value={form.name}
-            onChange={(e) => set('name', e.target.value)}
-            onBlur={() => handleBlur('name')}
-            required
-          />
-          {touched.name && errors.name && <span className="input-error-msg">{errors.name}</span>}
-          {fieldErrors.name && <span className="input-error-msg">{fieldErrors.name}</span>}
+      {isEdit ? (
+        <div className="form-row">
+          <div className="input-group">
+            <label className="input-label">Name</label>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--t1)', padding: '9px 0', borderBottom: '1px solid var(--s3)' }}>
+              {form.name}
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Email</label>
+            <div style={{ fontSize: 14, color: 'var(--t2)', padding: '9px 0', borderBottom: '1px solid var(--s3)' }}>
+              {form.email}
+            </div>
+          </div>
         </div>
-        <div className="input-group">
-          <label className="input-label">Email</label>
-          <input
-            className={`input ${touched.email && errors.email ? 'has-error' : ''}`}
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={(e) => set('email', e.target.value)}
-            onBlur={() => handleBlur('email')}
-            required
-            disabled={isEdit}
-          />
-          {touched.email && errors.email && <span className="input-error-msg">{errors.email}</span>}
-          {fieldErrors.email && <span className="input-error-msg">{fieldErrors.email}</span>}
+      ) : (
+        <div className="form-row">
+          <div className="input-group">
+            <label className="input-label">Name</label>
+            <input
+              className={`input ${touched.name && errors.name ? 'has-error' : ''}`}
+              name="name"
+              value={form.name}
+              onChange={(e) => set('name', e.target.value)}
+              onBlur={() => handleBlur('name')}
+              required
+            />
+            {touched.name && errors.name && <span className="input-error-msg">{errors.name}</span>}
+            {fieldErrors.name && <span className="input-error-msg">{fieldErrors.name}</span>}
+          </div>
+          <div className="input-group">
+            <label className="input-label">Email</label>
+            <input
+              className={`input ${touched.email && errors.email ? 'has-error' : ''}`}
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={(e) => set('email', e.target.value)}
+              onBlur={() => handleBlur('email')}
+              required
+            />
+            {touched.email && errors.email && <span className="input-error-msg">{errors.email}</span>}
+            {fieldErrors.email && <span className="input-error-msg">{fieldErrors.email}</span>}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="form-row">
         <div className="input-group">

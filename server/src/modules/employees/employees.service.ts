@@ -93,7 +93,10 @@ export async function update(
   let allowedFields: (keyof UpdateEmployeeInput)[];
 
   if (role === 'admin') {
-    allowedFields = Object.keys(input) as (keyof UpdateEmployeeInput)[];
+    // name and email are set at registration and treated as identity — exclude from PATCH
+    allowedFields = (Object.keys(input) as (keyof UpdateEmployeeInput)[]).filter(
+      (k) => k !== 'name' && k !== 'email'
+    );
   } else if (role === 'manager') {
     if (input.status === 'terminated') {
       throw ApiError.forbidden('Only admins can terminate employees.');
