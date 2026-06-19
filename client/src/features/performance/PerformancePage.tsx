@@ -69,6 +69,8 @@ export function PerformancePage() {
   const isAdmin = user?.role === 'admin';
   const canManage = user?.role === 'admin' || user?.role === 'manager';
   const isEmployee = user?.role === 'employee';
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isDueDatePast = !!quarterDueDate && quarterDueDate < todayStr;
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['performance', page, filterEmpId],
@@ -208,17 +210,22 @@ export function PerformancePage() {
                     />
                     <span style={{ fontSize: 11.5, color: 'var(--t3)' }}>Format: Q1 2026</span>
                   </div>
-                  <input
-                    className="input"
-                    style={{ height: 44 }}
-                    type="date"
-                    min={new Date().toISOString().slice(0, 10)}
-                    value={quarterDueDate}
-                    onChange={(e) => setQuarterDueDate(e.target.value)}
-                    required
-                  />
+                  <div>
+                    <input
+                      className={`input${isDueDatePast ? ' has-error' : ''}`}
+                      style={{ height: 44 }}
+                      type="date"
+                      min={todayStr}
+                      value={quarterDueDate}
+                      onChange={(e) => setQuarterDueDate(e.target.value)}
+                      required
+                    />
+                    {isDueDatePast && (
+                      <span className="input-error-msg">Due date must be today or in the future.</span>
+                    )}
+                  </div>
                 </div>
-                <button className="form-btn" type="submit" disabled={createQuarterMutation.isPending}>
+                <button className="form-btn" type="submit" disabled={createQuarterMutation.isPending || isDueDatePast}>
                   {createQuarterMutation.isPending ? <span className="spinner" /> : 'Open Period'}
                 </button>
               </form>

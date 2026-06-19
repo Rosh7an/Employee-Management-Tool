@@ -103,6 +103,9 @@ export async function createQuarter(period: string, dueDate: Date, startedBy: st
   if (existing) throw ApiError.conflict(`Quarter "${period}" already exists.`);
   const m = period.match(/Q(\d)\s+(\d{4})/);
   if (!m) throw ApiError.validation('Invalid period format. Use "Q1 2026".', 'period');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (dueDate < today) throw ApiError.validation('Due date must be today or in the future.', 'dueDate');
   return PerformanceQuarter.create({
     period,
     year: parseInt(m[2]),

@@ -125,6 +125,8 @@ export function MilestonePage() {
   }
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isDatePast = !!form.targetDate && form.targetDate < todayStr;
 
   function creatorId(m: Milestone): string | undefined {
     if (!m.createdBy) return undefined;
@@ -174,15 +176,20 @@ export function MilestonePage() {
                 placeholder="e.g. Launch v2.0"
                 onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
               />
-              <input
-                className="input"
-                type="date"
-                style={{ height: 44 }}
-                required
-                min={new Date().toISOString().slice(0, 10)}
-                value={form.targetDate}
-                onChange={(e) => setForm((p) => ({ ...p, targetDate: e.target.value }))}
-              />
+              <div>
+                <input
+                  className={`input${isDatePast ? ' has-error' : ''}`}
+                  type="date"
+                  style={{ height: 44 }}
+                  required
+                  min={todayStr}
+                  value={form.targetDate}
+                  onChange={(e) => setForm((p) => ({ ...p, targetDate: e.target.value }))}
+                />
+                {isDatePast && (
+                  <span className="input-error-msg">Target date must be today or in the future.</span>
+                )}
+              </div>
 
               {/* Row 3 — second group labels, 20px gap above */}
               <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginTop: 20, marginBottom: 6 }}>
@@ -216,7 +223,7 @@ export function MilestonePage() {
               <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
                 <button
                   type="submit"
-                  disabled={!form.title || !form.targetDate || isSubmitting}
+                  disabled={!form.title || !form.targetDate || isDatePast || isSubmitting}
                   style={{
                     height: 44,
                     padding: '0 16px',
@@ -226,8 +233,8 @@ export function MilestonePage() {
                     borderRadius: 6,
                     fontSize: 14,
                     fontWeight: 500,
-                    cursor: (!form.title || !form.targetDate || isSubmitting) ? 'not-allowed' : 'pointer',
-                    opacity: (!form.title || !form.targetDate || isSubmitting) ? 0.45 : 1,
+                    cursor: (!form.title || !form.targetDate || isDatePast || isSubmitting) ? 'not-allowed' : 'pointer',
+                    opacity: (!form.title || !form.targetDate || isDatePast || isSubmitting) ? 0.45 : 1,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6,
