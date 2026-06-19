@@ -57,18 +57,19 @@ const employeeSchema = new Schema<IEmployeeDocument>(
   { timestamps: true }
 );
 
-employeeSchema.pre('validate', async function (next) {
+employeeSchema.pre('validate', async function (done) {
   if (this.isNew && !this.employeeId) {
     const EmployeeModel = mongoose.model('Employee');
     const last = await EmployeeModel.findOne().sort({ createdAt: -1 }).lean() as { employeeId?: string } | null;
     if (last?.employeeId) {
-      const lastNum = parseInt(last.employeeId.replace('EMP-', ''), 10);
-      this.employeeId = `EMP-${isNaN(lastNum) ? 1002 : lastNum + 1}`;
+      const lastNum = parseInt(last.employeeId.replace(/^EMP-0*/, ''), 10);
+      const seq = isNaN(lastNum) ? 1 : lastNum + 1;
+      this.employeeId = `EMP-${String(seq).padStart(5, '0')}`;
     } else {
-      this.employeeId = 'EMP-1001';
+      this.employeeId = 'EMP-00001';
     }
   }
-  next();
+  done();
 });
 
 const Employee: Model<IEmployeeDocument> =

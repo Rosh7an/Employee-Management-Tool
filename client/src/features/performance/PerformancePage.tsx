@@ -25,10 +25,10 @@ function abbreviatePeriod(p: string) {
   return p.replace(/(\d{4})/, (y) => `'${y.slice(2)}`);
 }
 function employeeName(r: PerformanceReview) {
-  return typeof r.employeeId === 'object' ? r.employeeId.name : '—';
+  return r.employeeId && typeof r.employeeId === 'object' ? r.employeeId.name : '—';
 }
 function reviewerName(r: PerformanceReview) {
-  return typeof r.reviewerId === 'object' ? r.reviewerId.name : '—';
+  return r.reviewerId && typeof r.reviewerId === 'object' ? r.reviewerId.name : '—';
 }
 
 function RatingStars({ rating }: { rating: number }) {

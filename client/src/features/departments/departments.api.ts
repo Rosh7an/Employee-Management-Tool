@@ -11,9 +11,9 @@ export interface Department {
 
 export const departmentsApi = {
   list: () => api.get('/departments'),
-  create: (data: { name: string; description?: string; managerId?: string }) =>
+  create: (data: { name: string; description?: string; managerId?: string | null }) =>
     api.post('/departments', data),
-  update: (id: string, data: { name?: string; description?: string; managerId?: string }) =>
+  update: (id: string, data: { name?: string; description?: string; managerId?: string | null }) =>
     api.patch(`/departments/${id}`, data),
   remove: (id: string) => api.delete(`/departments/${id}`),
 };

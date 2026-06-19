@@ -36,11 +36,15 @@ export async function getById(id: string): Promise<Record<string, unknown>> {
 export async function create(input: CreateDepartmentInput) {
   const existing = await Department.findOne({ name: new RegExp(`^${input.name}$`, 'i') });
   if (existing) throw ApiError.conflict('A department with this name already exists.', 'name');
-  return Department.create(input);
+  return Department.create({ name: input.name, description: input.description, managerId: input.managerId ?? null });
 }
 
 export async function update(id: string, input: UpdateDepartmentInput) {
-  const dept = await Department.findByIdAndUpdate(id, input, { new: true });
+  const dept = await Department.findByIdAndUpdate(
+    id,
+    { name: input.name, description: input.description, managerId: input.managerId ?? null },
+    { new: true, omitUndefined: true }
+  );
   if (!dept) throw ApiError.notFound('Department not found.');
   return dept;
 }

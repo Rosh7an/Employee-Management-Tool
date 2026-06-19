@@ -16,6 +16,7 @@ interface FormState {
   phone: string;
   designation: string;
   department: string;
+  managerId: string;
   salary: { base: number; currency: string };
   dateOfJoining: string;
   status: 'active' | 'on-leave' | 'terminated';
@@ -25,8 +26,7 @@ interface FormState {
 export function EmployeeForm({ employee, onSuccess }: Props) {
   const isEdit = !!employee;
 
-  // Set up the default form state
-  const initialForm = {
+  const initialForm: FormState = {
     name: employee?.name || '',
     email: employee?.email || '',
     phone: employee?.phone || '',
@@ -34,13 +34,15 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
     department: (employee?.department && typeof employee.department === 'object')
       ? employee.department._id
       : '',
+    managerId: (employee?.managerId && typeof employee.managerId === 'object')
+      ? employee.managerId._id
+      : '',
     salary: employee?.salary ?? { base: 0, currency: 'USD' },
     dateOfJoining: employee?.dateOfJoining ? employee.dateOfJoining.slice(0, 10) : new Date().toISOString().slice(0, 10),
     status: employee?.status || 'active',
     employmentType: employee?.employmentType || 'full-time',
   };
 
-  // Restore from sessionStorage on mount (lazy initializer avoids effect)
   const [form, setForm] = useState<FormState>(() => {
     const saved = sessionStorage.getItem('pending_form');
     if (saved) {
@@ -59,16 +61,24 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
 
   const { data: deptData } = useQuery({
     queryKey: ['departments'],
-    queryFn: () => departmentsApi.list().then((r) => r.data.data || r.data),
+    queryFn: () => departmentsApi.list().then((r) => r.data),
   });
 
-  const departments = deptData?.departments || deptData || [];
+  const { data: empData } = useQuery({
+    queryKey: ['employees-all'],
+    queryFn: () => employeesApi.list({ limit: 200 }).then((r) => r.data),
+  });
+
+  const departments: Department[] = deptData?.data?.departments || deptData?.data || [];
+  const allEmployees: Employee[] = empData?.data?.data || empData?.data || [];
+  const managerOptions = allEmployees.filter((e) => e._id !== employee?._id && e.status !== 'terminated');
 
   const mutation = useMutation({
     mutationFn: () => {
-      const payload: Partial<CreateEmployeeInput> & { status?: string } = { ...form };
-      if (!payload.phone) delete payload.phone;
-      if (!payload.department) delete payload.department;
+      const payload: Partial<CreateEmployeeInput> & { status?: string } = {
+        ...form,
+        managerId: form.managerId || undefined,
+      };
       if (isEdit) {
         return employeesApi.update(employee._id, payload);
       }
@@ -91,7 +101,6 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
     setTouched((prev) => ({ ...prev, [field]: true }));
   }
 
-  // Compute live validation errors
   const errors: Record<string, string> = {};
   if (!form.name || form.name.trim().length < 2) {
     errors.name = 'Name must be at least 2 characters.';
@@ -99,8 +108,17 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
   if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
     errors.email = 'Please enter a valid email address.';
   }
+  if (!form.phone || form.phone.trim().length < 1) {
+    errors.phone = 'Phone is required.';
+  }
   if (!form.designation || form.designation.trim().length < 1) {
     errors.designation = 'Designation is required.';
+  }
+  if (!form.department) {
+    errors.department = 'Department is required.';
+  }
+  if (!form.salary?.base || form.salary.base <= 0) {
+    errors.salary = 'Salary must be greater than 0.';
   }
   if (!form.dateOfJoining) {
     errors.dateOfJoining = 'Date of joining is required.';
@@ -111,7 +129,11 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
 
   const handleSubmit = (e: { preventDefault: () => void }) => {
     e.preventDefault();
-    if (isDirty && isValid) {
+    if (!isValid) {
+      setTouched({ name: true, email: true, phone: true, designation: true, department: true, salary: true, dateOfJoining: true });
+      return;
+    }
+    if (isDirty) {
       mutation.mutate();
     }
   };
@@ -167,11 +189,14 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
         <div className="input-group">
           <label className="input-label">Phone</label>
           <input
-            className="input"
+            className={`input ${touched.phone && errors.phone ? 'has-error' : ''}`}
             name="phone"
             value={form.phone}
             onChange={(e) => set('phone', e.target.value)}
+            onBlur={() => handleBlur('phone')}
+            required
           />
+          {touched.phone && errors.phone && <span className="input-error-msg">{errors.phone}</span>}
         </div>
       </div>
 
@@ -179,30 +204,50 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
         <div className="input-group">
           <label className="input-label">Department</label>
           <select
-            className="input"
+            className={`input ${touched.department && errors.department ? 'has-error' : ''}`}
             name="department"
             value={form.department}
             onChange={(e) => set('department', e.target.value)}
+            onBlur={() => handleBlur('department')}
           >
-            <option value="">— None —</option>
-            {(departments as Department[]).map((d) => (
+            <option value="">— Select department —</option>
+            {departments.map((d) => (
               <option key={d._id} value={d._id}>{d.name}</option>
             ))}
           </select>
+          {touched.department && errors.department && <span className="input-error-msg">{errors.department}</span>}
         </div>
         <div className="input-group">
-          <label className="input-label">Salary (USD)</label>
-          <input
+          <label className="input-label">Manager</label>
+          <select
             className="input"
-            name="salary"
-            type="number"
-            value={form.salary?.base || ''}
-            onChange={(e) => set('salary', { base: Number(e.target.value), currency: 'USD' })}
-          />
+            name="managerId"
+            value={form.managerId}
+            onChange={(e) => set('managerId', e.target.value)}
+          >
+            <option value="">— None —</option>
+            {managerOptions.map((e) => (
+              <option key={e._id} value={e._id}>{e.name} ({e.employeeId})</option>
+            ))}
+          </select>
         </div>
       </div>
 
       <div className="form-row">
+        <div className="input-group">
+          <label className="input-label">Salary (USD)</label>
+          <input
+            className={`input ${touched.salary && errors.salary ? 'has-error' : ''}`}
+            name="salary"
+            type="number"
+            min="1"
+            value={form.salary?.base || ''}
+            onChange={(e) => set('salary', { base: Number(e.target.value), currency: 'USD' })}
+            onBlur={() => handleBlur('salary')}
+            required
+          />
+          {touched.salary && errors.salary && <span className="input-error-msg">{errors.salary}</span>}
+        </div>
         <div className="input-group">
           <label className="input-label">Employment Type</label>
           <select
@@ -216,6 +261,9 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
             <option value="contract">Contract</option>
           </select>
         </div>
+      </div>
+
+      <div className="form-row">
         <div className="input-group">
           <label className="input-label">Date of Joining</label>
           <input
@@ -229,10 +277,7 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
           />
           {touched.dateOfJoining && errors.dateOfJoining && <span className="input-error-msg">{errors.dateOfJoining}</span>}
         </div>
-      </div>
-
-      {isEdit && (
-        <div className="form-row" style={{ maxWidth: '280px' }}>
+        {isEdit && (
           <div className="input-group">
             <label className="input-label">Status</label>
             <select
@@ -246,8 +291,8 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
               <option value="terminated">Terminated</option>
             </select>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div style={{ display: 'flex', gap: 8, paddingTop: 'var(--sp-2)' }}>
         <button
