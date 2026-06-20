@@ -3,7 +3,7 @@ import { createMilestoneSchema, updateMilestoneSchema } from './milestone.schema
 import * as service from './milestone.service';
 
 export const getAll = async (req: Request, res: Response) => {
-  const data = await service.getAll(String(req.user.userId), req.user.role);
+  const data = await service.getAll(String(req.user.userId), req.user.role, req.user.departmentId);
   res.json({ success: true, data });
 };
 export const create = async (req: Request, res: Response) => {

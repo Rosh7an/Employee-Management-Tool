@@ -29,13 +29,14 @@ describe('GET /api/employees', () => {
     });
   });
 
-  it('employee sees only their own record', async () => {
+  it('assigned employee sees all employees in the org', async () => {
     const res = await request(app)
       .get('/api/employees')
       .set('Authorization', `Bearer ${users.employeeToken}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.length).toBe(1);
-    expect(res.body.data[0]._id).toBe(users.employeeRecordId);
+    // Seeded employees: admin, manager, employee (3 total)
+    const employees = res.body.data.employees ?? res.body.data;
+    expect(employees.length).toBe(3);
   });
 
   it('returns 401 without auth', async () => {
@@ -97,11 +98,11 @@ describe('GET /api/employees/:id', () => {
     expect(res.status).toBe(200);
   });
 
-  it('employee cannot view another employee\'s record', async () => {
+  it('assigned employee can view another employee\'s record', async () => {
     const res = await request(app)
       .get(`/api/employees/${users.managerEmployeeId}`)
       .set('Authorization', `Bearer ${users.employeeToken}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
   });
 
   it('salary is stripped for non-admin', async () => {

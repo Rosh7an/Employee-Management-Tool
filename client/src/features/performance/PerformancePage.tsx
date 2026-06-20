@@ -183,7 +183,10 @@ export function PerformancePage() {
         <div className="detail-section" style={{ marginBottom: 'var(--sp-5)' }}>
           <div className="detail-section-header">
             <h2>Review Periods</h2>
-            <button className="btn btn-sm" onClick={() => setShowQuarterForm((v) => !v)}>
+            <button
+              className={`btn btn-sm ${showQuarterForm ? '' : 'btn-ai'}`}
+              onClick={() => setShowQuarterForm((v) => !v)}
+            >
               {showQuarterForm ? 'Cancel' : '+ Start Period'}
             </button>
           </div>
@@ -335,7 +338,7 @@ export function PerformancePage() {
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button className="btn btn-ghost btn-sm" onClick={() => setEditReview(r)}>Edit</button>
-                          <button className="btn btn-ghost btn-sm" style={{ color: '#dc2626' }} onClick={() => setDeleteTarget(r._id)}>Delete</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => setDeleteTarget(r._id)}>Delete</button>
                         </div>
                       </td>
                     )}

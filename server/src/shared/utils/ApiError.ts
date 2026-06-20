@@ -16,6 +16,10 @@ export class ApiError extends Error {
     Object.setPrototypeOf(this, ApiError.prototype);
   }
 
+  static badRequest(message: string, field: string | null = null) {
+    return new ApiError(400, 'BAD_REQUEST', message, field);
+  }
+
   static unauthenticated(message = 'Authentication required.') {
     return new ApiError(401, 'UNAUTHENTICATED', message);
   }

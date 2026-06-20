@@ -23,6 +23,7 @@ export interface ListParams {
   department?: string;
   status?: string;
   unassigned?: boolean;
+  managersOnly?: boolean;
 }
 
 export interface CreateEmployeeInput {

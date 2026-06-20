@@ -35,6 +35,29 @@ export async function getAll(req: Request) {
   return { data: leaves, meta: buildMeta(page, limit, total) };
 }
 
+export async function getById(id: string, req: Request) {
+  const leave = await LeaveRequest.findById(id)
+    .populate('employeeId', 'name employeeId designation department email')
+    .populate('reviewedBy', 'name')
+    .lean();
+  if (!leave) throw ApiError.notFound('Leave request not found.');
+
+  const { role, employeeId, departmentId } = req.user;
+
+  if (role === 'employee' && leave.employeeId && (leave.employeeId as any)._id?.toString() !== employeeId) {
+    throw ApiError.forbidden('You can only view your own leave requests.');
+  }
+
+  if (role === 'manager') {
+    const emp = await Employee.findById((leave.employeeId as any)._id).lean();
+    if (!emp || emp.department?.toString() !== departmentId) {
+      throw ApiError.forbidden('You can only view leave requests for employees in your department.');
+    }
+  }
+
+  return leave;
+}
+
 export async function submit(input: SubmitLeaveInput, req: Request) {
   if (req.user.isDirector) {
     throw ApiError.forbidden('Company director is exempt from leave requests.');

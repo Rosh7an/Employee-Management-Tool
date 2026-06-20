@@ -16,11 +16,39 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
+  const PASSWORD_HINT =
+    'At least 8 characters with uppercase, lowercase, number and special character.';
+
   function validateField(field: string, value: string): string {
-    if (field === 'email' && value && !/\S+@\S+\.\S+/.test(value)) return 'Invalid email address';
-    if (field === 'password' && value && value.length < 8) return 'At least 8 characters';
-    if (field === 'confirmPassword' && value && value !== form.password) return 'Passwords do not match';
+    if (field === 'name' && !value.trim()) return 'Full name is required';
+    if (field === 'email') {
+      if (!value.trim()) return 'Email is required';
+      if (!/\S+@\S+\.\S+/.test(value)) return 'Invalid email address';
+    }
+    if (field === 'password') {
+      if (!value) return 'Password is required';
+      if (tab === 'register') {
+        if (value.length < 8) return 'At least 8 characters';
+        if (!/[A-Z]/.test(value)) return 'Must contain an uppercase letter';
+        if (!/[a-z]/.test(value)) return 'Must contain a lowercase letter';
+        if (!/[0-9]/.test(value)) return 'Must contain a number';
+        if (!/[@$!%*?&#^()_+\-=]/.test(value)) return 'Must contain a special character';
+      }
+    }
+    if (field === 'confirmPassword' && value !== form.password) return 'Passwords do not match';
     return '';
+  }
+
+  function validateAll(): Record<string, string> {
+    const fields = tab === 'login'
+      ? ['email', 'password']
+      : ['name', 'email', 'password', 'confirmPassword'];
+    const errs: Record<string, string> = {};
+    for (const f of fields) {
+      const msg = validateField(f, form[f as keyof typeof form]);
+      if (msg) errs[f] = msg;
+    }
+    return errs;
   }
 
   function handleBlur(field: string) {
@@ -28,8 +56,22 @@ export function LoginPage() {
     setErrors((prev) => msg ? { ...prev, [field]: msg } : (({ [field]: _, ...rest }) => rest)(prev));
   }
 
+  function handleChange(field: string, value: string) {
+    setForm((p) => ({ ...p, [field]: value }));
+    setSubmitError('');
+    if (errors[field]) {
+      const msg = validateField(field, value);
+      setErrors((prev) => msg ? { ...prev, [field]: msg } : (({ [field]: _, ...rest }) => rest)(prev));
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    const allErrors = validateAll();
+    if (Object.keys(allErrors).length > 0) {
+      setErrors(allErrors);
+      return;
+    }
     setSubmitError('');
     setLoading(true);
     try {
@@ -113,10 +155,10 @@ export function LoginPage() {
               <div className="input-group">
                 <label className="input-label" htmlFor="auth-name">Full name</label>
                 <input
-                  id="auth-name" name="name" className="input" type="text"
-                  placeholder="Jane Smith"
+                  id="auth-name" name="name" className={`input${errors.name ? ' has-error' : ''}`}
+                  type="text" placeholder="Jane Smith"
                   value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  onChange={(e) => handleChange('name', e.target.value)}
                   onBlur={() => handleBlur('name')}
                   required
                 />
@@ -130,7 +172,7 @@ export function LoginPage() {
                 id="auth-email" name="email" className={`input${errors.email ? ' has-error' : ''}`}
                 type="email" placeholder="you@company.com"
                 value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                onChange={(e) => handleChange('email', e.target.value)}
                 onBlur={() => handleBlur('email')}
                 required
               />
@@ -141,9 +183,9 @@ export function LoginPage() {
               <label className="input-label" htmlFor="auth-password">Password</label>
               <input
                 id="auth-password" name="password" className={`input${errors.password ? ' has-error' : ''}`}
-                type="password" placeholder={tab === 'register' ? 'At least 8 characters' : '••••••••'}
+                type="password" placeholder={tab === 'register' ? PASSWORD_HINT : '••••••••'}
                 value={form.password}
-                onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                onChange={(e) => handleChange('password', e.target.value)}
                 onBlur={() => handleBlur('password')}
                 required
               />
@@ -158,7 +200,7 @@ export function LoginPage() {
                   className={`input${errors.confirmPassword ? ' has-error' : ''}`}
                   type="password" placeholder="Repeat password"
                   value={form.confirmPassword}
-                  onChange={(e) => setForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                  onChange={(e) => handleChange('confirmPassword', e.target.value)}
                   onBlur={() => handleBlur('confirmPassword')}
                   required
                 />

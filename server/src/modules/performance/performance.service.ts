@@ -23,13 +23,34 @@ export async function getAll(req: Request) {
   return { data: reviews, meta: buildMeta(page, limit, total) };
 }
 
-export async function getByEmployee(empId: string) {
-  return PerformanceReview.find({ employeeId: empId }).populate('reviewerId', 'name employeeId').sort({ period: 1 }).lean();
+export async function getByEmployee(empId: string, req: Request) {
+  const { role, employeeId, departmentId } = req.user;
+
+  if (role === 'employee' && empId !== employeeId) {
+    throw ApiError.forbidden('You can only view your own performance reviews.');
+  }
+
+  if (role === 'manager') {
+    const target = await Employee.findById(empId).lean();
+    if (!target || target.department?.toString() !== departmentId) {
+      throw ApiError.forbidden('You can only view performance reviews for employees in your department.');
+    }
+  }
+
+  return PerformanceReview.find({ employeeId: empId })
+    .populate('reviewerId', 'name employeeId')
+    .sort({ period: 1 })
+    .lean();
 }
 
 export async function create(input: CreatePerformanceInput, reviewerId: string, reviewerRole: string) {
   const emp = await Employee.findById(input.employeeId).lean();
   if (!emp) throw ApiError.notFound('Employee not found.');
+
+  // Managers cannot write their own performance review
+  if (reviewerRole === 'manager' && input.employeeId.toString() === reviewerId?.toString()) {
+    throw ApiError.forbidden('Managers cannot create a performance review for themselves.');
+  }
 
   // Find open quarter matching this period
   const quarter = await PerformanceQuarter.findOne({ period: input.period }).lean();
@@ -40,13 +61,8 @@ export async function create(input: CreatePerformanceInput, reviewerId: string, 
     throw ApiError.validation(`Review period "${input.period}" is locked (due date passed).`, 'period');
   }
   if (new Date() > quarter.dueDate) {
-    // Auto-lock
     await PerformanceQuarter.findByIdAndUpdate(quarter._id, { status: 'locked' });
     throw ApiError.validation(`Review period "${input.period}" has expired and is now locked.`, 'period');
-  }
-  // Managers can only review their dept employees
-  if (reviewerRole === 'manager') {
-    // This is already checked in middleware
   }
 
   const duplicate = await PerformanceReview.findOne({
@@ -68,7 +84,6 @@ export async function update(id: string, input: UpdatePerformanceInput, role: st
     throw ApiError.forbidden('You can only edit reviews you created.');
   }
 
-  // Check quarter is still open
   const periodToCheck = input.period ?? review.period;
   const quarter = await PerformanceQuarter.findOne({ period: periodToCheck }).lean();
   if (quarter) {
@@ -89,7 +104,9 @@ export async function update(id: string, input: UpdatePerformanceInput, role: st
 export async function remove(id: string, role: string, userId: string) {
   const review = await PerformanceReview.findById(id);
   if (!review) throw ApiError.notFound('Performance review not found.');
-  if (role !== 'admin' && review.reviewerId.toString() !== userId) throw ApiError.forbidden('You can only delete reviews you created.');
+  if (role !== 'admin' && review.reviewerId.toString() !== userId) {
+    throw ApiError.forbidden('You can only delete reviews you created.');
+  }
   await review.deleteOne();
 }
 

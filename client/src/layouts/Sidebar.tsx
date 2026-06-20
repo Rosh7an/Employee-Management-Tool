@@ -1,26 +1,76 @@
-import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { useState, useRef, useLayoutEffect } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  CalendarDays,
+  Banknote,
+  TrendingUp,
+  Flag,
+  ScrollText,
+  LogOut,
+  type LucideIcon,
+} from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 
-const NAV = [
-  { to: '/dashboard',   label: 'Dashboard',   icon: '⌗' },
-  { to: '/employees',   label: 'Employees',   icon: '👤' },
-  { to: '/departments', label: 'Departments', roles: ['admin'], icon: '⎇' },
-  { to: '/leave',       label: 'Leave',       icon: '🗓' },
-  { to: '/payroll',     label: 'Payroll',     icon: '＄' },
-  { to: '/performance', label: 'Performance', icon: '★' },
-  { to: '/milestones',  label: 'Milestones',  icon: '◎' },
-  { to: '/audit',       label: 'Audit Logs',  roles: ['admin'], icon: '▤' },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  roles?: string[];
+}
+
+const NAV: NavItem[] = [
+  { to: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
+  { to: '/employees',   label: 'Employees',   icon: Users },
+  { to: '/departments', label: 'Departments', icon: Building2,      roles: ['admin'] },
+  { to: '/leave',       label: 'Leave',       icon: CalendarDays },
+  { to: '/payroll',     label: 'Payroll',     icon: Banknote },
+  { to: '/performance', label: 'Performance', icon: TrendingUp },
+  { to: '/milestones',  label: 'Milestones',  icon: Flag },
+  { to: '/audit',       label: 'Audit Logs',  icon: ScrollText,     roles: ['admin'] },
 ];
+
+interface IndicatorPos { top: number; height: number; left: number; right: number; }
 
 export function Sidebar() {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('sidebar-collapsed') === 'true';
   });
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [indicator, setIndicator] = useState<IndicatorPos | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  const visible = NAV.filter(
+    (item) => !item.roles || (user && item.roles.includes(user.role))
+  );
+
+  const activeIndex = visible.findIndex((item) =>
+    item.to === '/dashboard'
+      ? location.pathname === '/dashboard'
+      : location.pathname.startsWith(item.to)
+  );
+
+  useLayoutEffect(() => {
+    if (!navRef.current || activeIndex < 0) {
+      setIndicator(null);
+      return;
+    }
+    const links = navRef.current.querySelectorAll<HTMLElement>('.sidebar-link');
+    const active = links[activeIndex];
+    if (!active) return;
+    const navW = navRef.current.offsetWidth;
+    setIndicator({
+      top:    active.offsetTop,
+      height: active.offsetHeight,
+      left:   active.offsetLeft,
+      right:  navW - active.offsetLeft - active.offsetWidth,
+    });
+  }, [activeIndex, isCollapsed]);
 
   const toggleCollapse = () => {
     setIsCollapsed((prev) => {
@@ -29,10 +79,6 @@ export function Sidebar() {
       return next;
     });
   };
-
-  const visible = NAV.filter(
-    (item) => !item.roles || (user && item.roles.includes(user.role))
-  );
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
@@ -44,8 +90,17 @@ export function Sidebar() {
         {/* Brand */}
         <div className="sidebar-brand" style={{ justifyContent: isCollapsed ? 'center' : 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', overflow: 'hidden' }}>
-            <div className="sidebar-brand-mark">EM</div>
-            {!isCollapsed && <span className="sidebar-brand-text">EMT</span>}
+            <div className="sidebar-brand-mark">
+              <svg width="16" height="16" viewBox="0 0 48 48" fill="none">
+                <circle cx="24" cy="10" r="6" fill="currentColor" opacity="0.95"/>
+                <circle cx="10" cy="38" r="6" fill="currentColor" opacity="0.8"/>
+                <circle cx="38" cy="38" r="6" fill="currentColor" opacity="0.8"/>
+                <line x1="24" y1="16" x2="10" y2="32" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" opacity="0.7"/>
+                <line x1="24" y1="16" x2="38" y2="32" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" opacity="0.7"/>
+                <line x1="10" y1="38" x2="38" y2="38" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" opacity="0.5"/>
+              </svg>
+            </div>
+            {!isCollapsed && <span className="sidebar-brand-text">Employee Management</span>}
           </div>
           <button
             onClick={toggleCollapse}
@@ -64,20 +119,40 @@ export function Sidebar() {
         </div>
 
         {/* Nav */}
-        <nav className="sidebar-nav">
-          {visible.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }: { isActive: boolean }) =>
-                `sidebar-link${isActive ? ' active' : ''}`
-              }
-            >
-              <span style={{ fontSize: '16px', width: '20px', textAlign: 'center' }}>{item.icon}</span>
-              {!isCollapsed && <span className="sidebar-link-text" style={{ marginLeft: 'var(--sp-2)' }}>{item.label}</span>}
-              <span className="sidebar-link-dot" />
-            </NavLink>
-          ))}
+        <nav ref={navRef} className="sidebar-nav" style={{ position: 'relative' }}>
+          {/* Sliding active pill */}
+          {indicator && (
+            <div
+              className="sidebar-active-indicator"
+              style={{
+                top:    indicator.top,
+                height: indicator.height,
+                left:   indicator.left,
+                right:  indicator.right,
+              }}
+            />
+          )}
+
+          {visible.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }: { isActive: boolean }) =>
+                  `sidebar-link${isActive ? ' active' : ''}`
+                }
+              >
+                <Icon size={17} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+                {!isCollapsed && (
+                  <span className="sidebar-link-text" style={{ marginLeft: 'var(--sp-2)' }}>
+                    {item.label}
+                  </span>
+                )}
+                <span className="sidebar-link-dot" />
+              </NavLink>
+            );
+          })}
         </nav>
 
         {/* User */}

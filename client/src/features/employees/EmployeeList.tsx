@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../../hooks/useToast';
 import { PageWrapper } from '../../layouts/PageWrapper';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { EmptyState } from '../../components/EmptyState';
@@ -13,9 +14,10 @@ import { EmployeeForm } from './EmployeeForm';
 export function EmployeeList() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const toast = useToast();
+  const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [showUnassigned, setShowUnassigned] = useState(false);
@@ -28,12 +30,11 @@ export function EmployeeList() {
   const unassignedCount: number = unassignedData?.meta?.total ?? 0;
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['employees', page, search, statusFilter, showUnassigned],
+    queryKey: ['employees', page, search, showUnassigned],
     queryFn: () =>
       employeesApi.list({
         page, limit: 15,
         search: search || undefined,
-        status: statusFilter || undefined,
         unassigned: showUnassigned || undefined,
       }).then((r) => r.data),
   });
@@ -51,7 +52,13 @@ export function EmployeeList() {
       <PageWrapper title="Add Employee" action={
         <button className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Cancel</button>
       }>
-        <EmployeeForm onSuccess={() => { setShowForm(false); refetch(); }} />
+        <EmployeeForm onSuccess={() => {
+          setShowForm(false);
+          refetch();
+          qc.invalidateQueries({ queryKey: ['employees'] });
+          qc.invalidateQueries({ queryKey: ['departments'] });
+          toast.success('Employee added.');
+        }} />
       </PageWrapper>
     );
   }
@@ -72,7 +79,7 @@ export function EmployeeList() {
           <button
             className="btn btn-ghost btn-sm"
             style={{ borderColor: '#fbbf24', color: '#92400e' }}
-            onClick={() => { setShowUnassigned(true); setStatusFilter(''); setSearch(''); setSearchInput(''); setPage(1); }}
+            onClick={() => { setShowUnassigned(true); setSearch(''); setSearchInput(''); setPage(1); }}
           >
             View
           </button>
@@ -85,7 +92,7 @@ export function EmployeeList() {
             <input
               className="input"
               style={{ maxWidth: 280 }}
-              placeholder="Search by name or email…"
+              placeholder="Search by name, email, department, role…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />
@@ -97,17 +104,6 @@ export function EmployeeList() {
               </button>
             )}
           </form>
-          <select
-            className="input"
-            style={{ width: 160 }}
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          >
-            <option value="">All statuses</option>
-            <option value="active">Active</option>
-            <option value="on-leave">On Leave</option>
-            <option value="terminated">Terminated</option>
-          </select>
         </div>
         {showUnassigned && (
           <button
@@ -119,7 +115,7 @@ export function EmployeeList() {
           </button>
         )}
         {user?.role === 'admin' && (
-          <button className="btn btn-sm" onClick={() => setShowForm(true)}>+ Add Employee</button>
+          <button className="btn btn-sm btn-ai" onClick={() => setShowForm(true)}>+ Add Employee</button>
         )}
       </div>
 
@@ -145,7 +141,7 @@ export function EmployeeList() {
           title="No employees found"
           message={search ? `No results for "${search}"` : 'Add your first employee to get started.'}
           action={user?.role === 'admin' ? (
-            <button className="btn btn-sm" onClick={() => setShowForm(true)}>+ Add Employee</button>
+            <button className="btn btn-sm btn-ai" onClick={() => setShowForm(true)}>+ Add Employee</button>
           ) : undefined}
         />
       )}

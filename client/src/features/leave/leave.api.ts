@@ -16,6 +16,7 @@ export interface LeaveRequest {
 
 export const leaveApi = {
   list: (params?: { status?: string; page?: number }) => api.get('/leave', { params }),
+  getById: (id: string) => api.get(`/leave/${id}`),
   create: (data: { type: string; startDate: string; endDate: string; reason?: string }) =>
     api.post('/leave', data),
   review: (id: string, data: { status: 'approved' | 'rejected'; reviewNote?: string }) =>

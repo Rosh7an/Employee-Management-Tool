@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageWrapper } from '../../layouts/PageWrapper';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { StatusLabel } from '../../components/StatusLabel';
@@ -9,15 +9,20 @@ import { employeesApi, Employee } from './employees.api';
 import { departmentsApi, Department } from '../departments/departments.api';
 import { EmployeeForm } from './EmployeeForm';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
+import { useToast } from '../../hooks/useToast';
+import { extractApiError } from '../../lib/axios';
 
 export function EmployeeDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const toast = useToast();
+  const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [confirmTerminate, setConfirmTerminate] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [selectedDept, setSelectedDept] = useState('');
+  const [transferError, setTransferError] = useState('');
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['employee', id],
@@ -25,14 +30,23 @@ export function EmployeeDetail() {
     enabled: !!id,
   });
 
+  const invalidateAfterEmployeeChange = () => {
+    refetch();
+    qc.invalidateQueries({ queryKey: ['employees'] });
+    qc.invalidateQueries({ queryKey: ['department'] });
+    qc.invalidateQueries({ queryKey: ['departments'] });
+  };
+
   const terminateMutation = useMutation({
     mutationFn: () => employeesApi.terminate(id!),
-    onSuccess: () => refetch(),
+    onSuccess: () => { invalidateAfterEmployeeChange(); toast.success('Employee terminated.'); },
+    onError: (e: unknown) => toast.error(extractApiError(e, 'Termination failed.').message),
   });
 
   const transferMutation = useMutation({
     mutationFn: () => employeesApi.update(id!, { department: selectedDept }),
-    onSuccess: () => { setTransferring(false); refetch(); },
+    onSuccess: () => { setTransferring(false); setTransferError(''); invalidateAfterEmployeeChange(); toast.success('Employee transferred.'); },
+    onError: (e: unknown) => setTransferError(extractApiError(e, 'Transfer failed.').message),
   });
 
   const { data: deptData } = useQuery({
@@ -58,7 +72,7 @@ export function EmployeeDetail() {
       <PageWrapper title={emp.name} action={
         <button className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>Cancel</button>
       }>
-        <EmployeeForm employee={emp} onSuccess={() => { setEditing(false); refetch(); }} />
+        <EmployeeForm employee={emp} onSuccess={() => { setEditing(false); invalidateAfterEmployeeChange(); toast.success('Employee updated.'); }} />
       </PageWrapper>
     );
   }
@@ -73,7 +87,7 @@ export function EmployeeDetail() {
         title={emp.name}
         action={
           <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/employees')}>← Back</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>← Back</button>
             {canEdit && <button className="btn btn-outline btn-sm" onClick={() => setEditing(true)}>Edit</button>}
             {canTransfer && (
               <button className="btn btn-outline btn-sm" onClick={() => { setSelectedDept(emp.department?._id || ''); setTransferring(true); }}>
@@ -97,7 +111,9 @@ export function EmployeeDetail() {
             <div className="detail-field"><label>Email</label><span>{emp.email}</span></div>
             <div className="detail-field"><label>Phone</label><span>{emp.phone || '—'}</span></div>
             <div className="detail-field"><label>Department</label><span>{emp.department?.name || '—'}</span></div>
-            <div className="detail-field"><label>Reports to</label><span>{emp.managerId?.name || '—'}</span></div>
+            {emp.managerId && (
+              <div className="detail-field"><label>Reports to</label><span>{emp.managerId.name}</span></div>
+            )}
             <div className="detail-field"><label>Date of Joining</label><span>{new Date(emp.dateOfJoining).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span></div>
             {user?.role === 'admin' && emp.salary?.base != null && (
               <div className="detail-field"><label>Salary</label><span style={{ fontWeight: 600 }}>${emp.salary.base.toLocaleString()} {emp.salary.currency}</span></div>
@@ -142,9 +158,9 @@ export function EmployeeDetail() {
                 ))}
               </select>
             </div>
-            {transferMutation.isError && (
+            {transferError && (
               <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 'var(--sp-3)' }}>
-                Transfer failed. Please try again.
+                {transferError}
               </p>
             )}
             <div className="modal-actions" style={{ marginTop: 'var(--sp-5)' }}>

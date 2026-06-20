@@ -73,6 +73,14 @@ export async function create(input: CreatePayrollInput) {
   const emp = await Employee.findById(input.employeeId).lean();
   if (!emp) throw ApiError.notFound('Employee not found.');
 
+  if (emp.status === 'terminated') {
+    throw ApiError.badRequest('Cannot create a payroll record for a terminated employee.');
+  }
+
+  if (input.deductions > input.base + input.bonuses) {
+    throw ApiError.badRequest('Deductions cannot exceed the total of base salary and bonuses.', 'deductions');
+  }
+
   const existing = await Payroll.findOne({ employeeId: input.employeeId, payPeriod: input.payPeriod }).lean();
   if (existing) {
     throw ApiError.conflict(`A payroll record for "${input.payPeriod}" already exists for this employee.`);

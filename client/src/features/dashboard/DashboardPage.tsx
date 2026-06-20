@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -9,6 +10,7 @@ import { ErrorBanner } from '../../components/ErrorBanner';
 import { dashboardApi, DashboardStats } from './dashboard.api';
 import { milestonesApi, Milestone } from '../milestones/milestones.api';
 import { useAuthStore } from '../../store/auth.store';
+import api from '../../lib/axios';
 
 function StatSkeleton() {
   return (
@@ -24,6 +26,115 @@ function ChartDot(props: any) {
   const { cx, cy, payload } = props;
   const colors: Record<string, string> = { 'Not Started': '#d1d5db', 'In Progress': '#fbbf24', 'Achieved': '#10b981' };
   return <Dot cx={cx} cy={cy} r={5} fill={colors[payload.name] || '#0f0f0f'} stroke="#fff" strokeWidth={2} />;
+}
+
+function LiveDateWidget() {
+  const [hovered, setHovered] = useState(false);
+  const [tick, setTick] = useState(new Date());
+
+  useEffect(() => {
+    if (!hovered) return;
+    const id = setInterval(() => setTick(new Date()), 1000);
+    return () => clearInterval(id);
+  }, [hovered]);
+
+  const now = new Date();
+  const s = tick.getSeconds();
+  const m = tick.getMinutes();
+  const h = tick.getHours() % 12;
+  const secDeg   = s * 6;
+  const minDeg   = m * 6 + s * 0.1;
+  const hourDeg  = h * 30 + m * 0.5;
+
+  const hand = (deg: number, len: number, width: number, color: string) => {
+    const rad = (deg - 90) * (Math.PI / 180);
+    const cx = 28, cy = 28;
+    return (
+      <line
+        x1={cx} y1={cy}
+        x2={cx + len * Math.cos(rad)}
+        y2={cy + len * Math.sin(rad)}
+        stroke={color} strokeWidth={width} strokeLinecap="round"
+      />
+    );
+  };
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ position: 'relative', cursor: 'default', userSelect: 'none' }}
+    >
+      {/* Date pill */}
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8,
+        padding: '6px 14px', borderRadius: 99,
+        background: 'linear-gradient(135deg, #3f3f46 0%, #09090b 100%)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        boxShadow: '0 4px 14px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.18), inset 0 1px 2px rgba(255,255,255,0.12), inset 0 -1px 2px rgba(0,0,0,0.2)',
+        transition: 'box-shadow 0.2s',
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.5px', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' }}>
+          {now.toLocaleDateString('en-US', { weekday: 'short' })}
+        </span>
+        <span style={{ width: 1, height: 12, background: 'rgba(255,255,255,0.15)' }} />
+        <span style={{ fontSize: 13, fontWeight: 500, color: '#fff', letterSpacing: '-0.2px' }}>
+          {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+        </span>
+      </div>
+
+      {/* Clock popover */}
+      <div style={{
+        position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+        pointerEvents: 'none',
+        opacity: hovered ? 1 : 0,
+        transform: hovered ? 'translateY(0) scale(1)' : 'translateY(-6px) scale(0.95)',
+        transition: 'opacity 0.2s, transform 0.2s',
+        zIndex: 50,
+      }}>
+        <div style={{
+          background: 'linear-gradient(145deg, #1c1c1e 0%, #09090b 100%)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 16,
+          padding: '14px 18px',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)',
+          display: 'flex', alignItems: 'center', gap: 12,
+          minWidth: 160,
+        }}>
+          {/* Analog clock SVG */}
+          <svg width={56} height={56} viewBox="0 0 56 56">
+            {/* Face */}
+            <circle cx={28} cy={28} r={26} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={1.5} />
+            <circle cx={28} cy={28} r={24} fill="rgba(255,255,255,0.04)" />
+            {/* Hour ticks */}
+            {Array.from({ length: 12 }).map((_, i) => {
+              const a = (i * 30 - 90) * (Math.PI / 180);
+              return (
+                <line key={i}
+                  x1={28 + 20 * Math.cos(a)} y1={28 + 20 * Math.sin(a)}
+                  x2={28 + 23 * Math.cos(a)} y2={28 + 23 * Math.sin(a)}
+                  stroke="rgba(255,255,255,0.25)" strokeWidth={1.5} strokeLinecap="round"
+                />
+              );
+            })}
+            {hand(hourDeg, 12, 2.5, '#ffffff')}
+            {hand(minDeg, 16, 2, '#d4d4d8')}
+            {hand(secDeg, 19, 1, '#f87171')}
+            <circle cx={28} cy={28} r={2} fill="#fff" />
+          </svg>
+          {/* Digital time */}
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+              {tick.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+            </div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2, letterSpacing: '0.5px' }}>
+              {tick.toLocaleTimeString('en-US', { second: '2-digit' }).slice(-5)} · local time
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function DashboardPage() {
@@ -42,6 +153,12 @@ export function DashboardPage() {
     queryFn: () => milestonesApi.list().then((r) => r.data.data as Milestone[]),
   });
 
+  const { data: meData } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api.get('/auth/me').then((r) => r.data.data),
+  });
+  const department: string | null = meData?.employee?.department?.name ?? null;
+
   const milestoneChart = milestones
     ? [
         { name: 'Not Started', count: milestones.filter((m) => m.status === 'not-started').length },
@@ -57,15 +174,21 @@ export function DashboardPage() {
     <PageWrapper title="Dashboard">
       {error && <ErrorBanner error={error} />}
 
-      <div style={{ marginBottom: 'var(--sp-6)' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.3px', color: 'var(--t1)' }}>
-          {greeting}, {user?.name?.split(' ')[0]}
-        </h2>
-        <p style={{ fontSize: 13.5, color: 'var(--t3)', marginTop: 4 }}>
-          {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          {' · '}
-          <span style={{ textTransform: 'capitalize' }}>{user?.role}</span>
-        </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--sp-6)', gap: 'var(--sp-4)' }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.3px', color: 'var(--t1)' }}>
+            {greeting}, {user?.name?.split(' ')[0]}
+          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+            {user?.role !== 'employee' && (
+              <span style={{ fontSize: 13, color: 'var(--t3)', textTransform: 'capitalize' }}>{user?.role}</span>
+            )}
+            {department && (
+              <span className="badge badge-dept">{department}</span>
+            )}
+          </div>
+        </div>
+        <LiveDateWidget />
       </div>
 
       {/* Stats */}

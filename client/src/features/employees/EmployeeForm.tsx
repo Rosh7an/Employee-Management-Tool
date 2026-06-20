@@ -64,14 +64,7 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
     queryFn: () => departmentsApi.list().then((r) => r.data),
   });
 
-  const { data: empData } = useQuery({
-    queryKey: ['employees-all'],
-    queryFn: () => employeesApi.list({ limit: 200 }).then((r) => r.data),
-  });
-
   const departments: Department[] = deptData?.data?.departments || deptData?.data || [];
-  const allEmployees: Employee[] = empData?.data?.data || empData?.data || [];
-  const managerOptions = allEmployees.filter((e) => e._id !== employee?._id && e.status !== 'terminated');
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -198,24 +191,21 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
           {touched.designation && errors.designation && <span className="input-error-msg">{errors.designation}</span>}
         </div>
         <div className="input-group">
-          <label className="input-label">Phone <span style={{ color: 'var(--t3)', fontWeight: 400 }}>(optional)</span></label>
-          <input
-            className="input"
-            name="phone"
-            value={form.phone}
-            onChange={(e) => set('phone', e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="form-row">
-        <div className="input-group">
           <label className="input-label">Department</label>
           <select
             className={`input ${touched.department && errors.department ? 'has-error' : ''}`}
             name="department"
             value={form.department}
-            onChange={(e) => set('department', e.target.value)}
+            onChange={(e) => {
+              const deptId = e.target.value;
+              const dept = departments.find((d) => d._id === deptId);
+              setForm((prev) => ({
+                ...prev,
+                department: deptId,
+                managerId: dept?.managerId?._id ?? '',
+              }));
+              setFieldErrors((prev) => { const n = { ...prev }; delete n.department; return n; });
+            }}
             onBlur={() => handleBlur('department')}
           >
             <option value="">— Select department —</option>
@@ -225,23 +215,18 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
           </select>
           {touched.department && errors.department && <span className="input-error-msg">{errors.department}</span>}
         </div>
-        <div className="input-group">
-          <label className="input-label">Manager</label>
-          <select
-            className="input"
-            name="managerId"
-            value={form.managerId}
-            onChange={(e) => set('managerId', e.target.value)}
-          >
-            <option value="">— None —</option>
-            {managerOptions.map((e) => (
-              <option key={e._id} value={e._id}>{e.name} ({e.employeeId})</option>
-            ))}
-          </select>
-        </div>
       </div>
 
       <div className="form-row">
+        <div className="input-group">
+          <label className="input-label">Phone <span style={{ color: 'var(--t3)', fontWeight: 400 }}>(optional)</span></label>
+          <input
+            className="input"
+            name="phone"
+            value={form.phone}
+            onChange={(e) => set('phone', e.target.value)}
+          />
+        </div>
         <div className="input-group">
           <label className="input-label">Salary (USD)</label>
           <input
@@ -256,6 +241,9 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
           />
           {touched.salary && errors.salary && <span className="input-error-msg">{errors.salary}</span>}
         </div>
+      </div>
+
+      <div className="form-row">
         <div className="input-group">
           <label className="input-label">Employment Type</label>
           <select
@@ -269,9 +257,6 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
             <option value="contract">Contract</option>
           </select>
         </div>
-      </div>
-
-      <div className="form-row">
         <div className="input-group">
           <label className="input-label">Date of Joining</label>
           <input
@@ -285,7 +270,10 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
           />
           {touched.dateOfJoining && errors.dateOfJoining && <span className="input-error-msg">{errors.dateOfJoining}</span>}
         </div>
-        {isEdit && (
+      </div>
+
+      {isEdit && (
+        <div className="form-row">
           <div className="input-group">
             <label className="input-label">Status</label>
             <select
@@ -299,8 +287,8 @@ export function EmployeeForm({ employee, onSuccess }: Props) {
               <option value="terminated">Terminated</option>
             </select>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 8, paddingTop: 'var(--sp-2)' }}>
         <button

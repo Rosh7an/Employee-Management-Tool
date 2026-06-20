@@ -145,7 +145,7 @@ export function MilestonePage() {
   return (
     <PageWrapper
       title="Milestones"
-      action={<button className="btn btn-sm" onClick={openCreate}>+ New Milestone</button>}
+      action={<button className="btn btn-sm btn-ai" onClick={openCreate}>+ New Milestone</button>}
     >
       {error && <ErrorBanner error={error} />}
 
@@ -375,8 +375,7 @@ export function MilestonePage() {
                         <button className="btn btn-ghost btn-sm" onClick={() => openEdit(m)}>Edit</button>
                         {canDelete(m) && (
                           <button
-                            className="btn btn-ghost btn-sm"
-                            style={{ color: 'var(--danger)' }}
+                            className="btn btn-danger btn-sm"
                             onClick={() => setDeleteTarget(m._id)}
                           >
                             Delete

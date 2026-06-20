@@ -1,5 +1,6 @@
 import { useState, Fragment } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { PageWrapper } from '../../layouts/PageWrapper';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { EmptyState } from '../../components/EmptyState';
@@ -14,6 +15,7 @@ import { extractApiError } from '../../lib/axios';
 export function LeaveManagement() {
   const { user } = useAuthStore();
   const toast = useToast();
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -118,7 +120,10 @@ export function LeaveManagement() {
               <tbody>
                 {leaves.map((leave) => (
                   <Fragment key={leave._id}>
-                    <tr>
+                    <tr
+                    className={canReview ? 'clickable' : ''}
+                    onClick={() => canReview && navigate(`/leave/${leave._id}`)}
+                  >
                       {user?.role !== 'employee' && (
                         <td><span style={{ fontWeight: 500 }}>{employeeName(leave)}</span></td>
                       )}

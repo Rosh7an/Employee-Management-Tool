@@ -10,7 +10,7 @@ export async function getAll(req: Request, res: Response): Promise<void> {
 }
 
 export async function getByEmployee(req: Request, res: Response): Promise<void> {
-  const reviews = await service.getByEmployee(String(req.params.empId));
+  const reviews = await service.getByEmployee(String(req.params.empId), req);
   res.json(success(reviews));
 }
 

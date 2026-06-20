@@ -11,6 +11,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', asyncWrapper(controller.getAll));
+router.get('/:id', asyncWrapper(controller.getById));
 router.post('/', timeWindow({ bypassRoles: ['admin', 'manager'] }), asyncWrapper(controller.submit));
 
 router.patch(

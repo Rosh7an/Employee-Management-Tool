@@ -137,6 +137,7 @@ export function ProfilePage() {
       title="My Profile"
       action={
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>← Back</button>
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => setShowPwForm(true)}
@@ -150,7 +151,6 @@ export function ProfilePage() {
           >
             Logout
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>← Back</button>
         </div>
       }
     >

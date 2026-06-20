@@ -8,6 +8,11 @@ export async function getAll(req: Request, res: Response): Promise<void> {
   res.json({ success: true, ...result });
 }
 
+export async function getByEmployee(req: Request, res: Response): Promise<void> {
+  const records = await service.getByEmployee(String(req.params.empId), req);
+  res.json(success(records));
+}
+
 export async function create(req: Request, res: Response): Promise<void> {
   const input = createPayrollSchema.parse(req.body);
   const record = await service.create(input);

@@ -8,6 +8,11 @@ export async function getAll(req: Request, res: Response): Promise<void> {
   res.json({ success: true, ...result });
 }
 
+export async function getById(req: Request, res: Response): Promise<void> {
+  const leave = await service.getById(String(req.params.id), req);
+  res.json(success(leave));
+}
+
 export async function submit(req: Request, res: Response): Promise<void> {
   const input = submitLeaveSchema.parse(req.body);
   const leave = await service.submit(input, req);

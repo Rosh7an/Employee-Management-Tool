@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { ArrowUpRight } from 'lucide-react';
 import { PageWrapper } from '../../layouts/PageWrapper';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { EmptyState } from '../../components/EmptyState';
@@ -8,6 +10,7 @@ import { departmentsApi, Department } from './departments.api';
 import { employeesApi, Employee } from '../employees/employees.api';
 import { extractApiError } from '../../lib/axios';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
+import { useToast } from '../../hooks/useToast';
 
 interface DeptForm {
   name: string;
@@ -20,6 +23,8 @@ const emptyForm: DeptForm = { name: '', description: '', managerId: '' };
 export function DepartmentList() {
   const { user } = useAuthStore();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const toast = useToast();
   const isAdmin = user?.role === 'admin';
 
   const [form, setForm] = useState<DeptForm>(emptyForm);
@@ -49,7 +54,8 @@ export function DepartmentList() {
   function validateForm(f: DeptForm): Record<string, string> {
     const errs: Record<string, string> = {};
     if (!f.name.trim()) errs.name = 'Department name is required.';
-    if (f.managerId && !f.description.trim()) errs.description = 'Description is required when assigning a manager.';
+    if (!f.description.trim()) errs.description = 'Description is required.';
+    if (!f.managerId) errs.managerId = 'Manager is required.';
     return errs;
   }
 
@@ -60,7 +66,13 @@ export function DepartmentList() {
         description: form.description || undefined,
         managerId: form.managerId || null,
       }),
-    onSuccess: () => { setForm(emptyForm); setFormTouched({}); refetch(); setError(''); },
+    onSuccess: () => {
+      setForm(emptyForm); setFormTouched({}); setError('');
+      refetch();
+      qc.invalidateQueries({ queryKey: ['departments'] });
+      qc.invalidateQueries({ queryKey: ['department'] });
+      toast.success('Department created.');
+    },
     onError: (e: unknown) => setError(extractApiError(e, 'Create failed.').message),
   });
 
@@ -71,13 +83,27 @@ export function DepartmentList() {
         description: editForm.description || undefined,
         managerId: editForm.managerId || null,
       }),
-    onSuccess: () => { setEditId(null); setEditTouched({}); refetch(); },
+    onSuccess: () => {
+      setEditId(null); setEditTouched({});
+      refetch();
+      qc.invalidateQueries({ queryKey: ['departments'] });
+      qc.invalidateQueries({ queryKey: ['department'] });
+      qc.invalidateQueries({ queryKey: ['employees'] });
+      qc.invalidateQueries({ queryKey: ['employee'] });
+      toast.success('Department updated.');
+    },
     onError: (e: unknown) => setError(extractApiError(e, 'Update failed.').message),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => departmentsApi.remove(id),
-    onSuccess: () => { setDeleteTarget(null); refetch(); qc.invalidateQueries({ queryKey: ['departments'] }); },
+    onSuccess: () => {
+      setDeleteTarget(null);
+      refetch();
+      qc.invalidateQueries({ queryKey: ['departments'] });
+      qc.invalidateQueries({ queryKey: ['department'] });
+      toast.success('Department deleted.');
+    },
     onError: (e: unknown) => setError(extractApiError(e, 'Delete failed.').message),
   });
 
@@ -136,7 +162,7 @@ export function DepartmentList() {
               </div>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>
-                  Description{form.managerId ? ' *' : ''}
+                  Description
                 </label>
                 <input
                   className={`input ${formTouched.description && createErrors.description ? 'has-error' : ''}`}
@@ -193,6 +219,7 @@ export function DepartmentList() {
                   <th>Manager</th>
                   <th>Headcount</th>
                   {isAdmin && <th>Actions</th>}
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -259,17 +286,25 @@ export function DepartmentList() {
                         ) : (
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             <button className="btn btn-ghost btn-sm" onClick={() => startEdit(dept)}>Edit</button>
-                            {(dept.headcount ?? 0) === 0 ? (
-                              <button className="btn btn-ghost btn-sm" onClick={() => setDeleteTarget(dept._id)}>Delete</button>
-                            ) : (
-                              <span style={{ fontSize: 11.5, color: 'var(--t3)', fontStyle: 'italic' }}>
-                                {dept.headcount} employee{dept.headcount !== 1 ? 's' : ''}
-                              </span>
+                            {(dept.headcount ?? 0) === 0 && (
+                              <button className="btn btn-danger btn-sm" onClick={() => setDeleteTarget(dept._id)}>Delete</button>
                             )}
                           </div>
                         )}
                       </td>
                     )}
+                    <td style={{ textAlign: 'right' }}>
+                      {editId !== dept._id && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ padding: '2px 6px', lineHeight: 1 }}
+                          title={`View ${dept.name} details`}
+                          onClick={() => navigate(`/departments/${dept._id}`)}
+                        >
+                          <ArrowUpRight size={14} />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -23,7 +23,9 @@ export async function scopeEmployee(
     return next();
   }
 
-  // employee: own record only
+  // Assigned employees can view any record; unassigned are restricted to self
+  if (departmentId) return next();
+
   if (!employeeId || target._id.toString() !== employeeId) {
     return next(ApiError.forbidden('You can only access your own record.'));
   }

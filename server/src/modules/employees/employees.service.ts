@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Employee from '../../models/Employee';
+import Department from '../../models/Department';
 import LeaveRequest from '../../models/LeaveRequest';
 import User from '../../models/User';
 
@@ -20,6 +21,12 @@ export async function getAll(req: Request) {
 
   const filter: Record<string, unknown> = {};
 
+  if (req.query.managersOnly === 'true') {
+    const managerUsers = await User.find({ role: 'manager' }, 'employeeId').lean();
+    const managerEmpIds = managerUsers.map((u) => u.employeeId).filter(Boolean);
+    filter._id = { $in: managerEmpIds };
+  }
+
   if (req.query.status) filter.status = req.query.status;
   if (req.query.unassigned === 'true') {
     filter.department = null;
@@ -27,15 +34,35 @@ export async function getAll(req: Request) {
     filter.department = req.query.department;
   }
   if (req.query.search) {
-    const re = new RegExp(String(req.query.search), 'i');
-    filter.$or = [{ name: re }, { designation: re }, { employeeId: re }];
+    const tokens = String(req.query.search).trim().split(/\s+/).filter(Boolean);
+    const orClauses = (
+      await Promise.all(
+        tokens.map(async (token) => {
+          const re = new RegExp(token, 'i');
+          const matchedDepts = await Department.find({ name: re }, '_id').lean();
+          return [
+            { employeeId: re },
+            { name: re },
+            { email: re },
+            { phone: re },
+            { designation: re },
+            { employmentType: re },
+            { status: re },
+            { department: { $in: matchedDepts.map((d) => d._id) } },
+          ];
+        })
+      )
+    ).flat();
+    filter.$or = orClauses;
   }
 
   if (role === 'manager') {
     filter.department = departmentId;
-  } else if (role === 'employee') {
+  } else if (role === 'employee' && !departmentId) {
+    // Unassigned employees can only see themselves
     filter._id = employeeId;
   }
+  // Assigned employees (departmentId set) see all — salary stripped downstream
 
   const [employees, total] = await Promise.all([
     Employee.find(filter)
@@ -100,6 +127,11 @@ export async function update(
   } else if (role === 'manager') {
     if (input.status === 'terminated') {
       throw ApiError.forbidden('Only admins can terminate employees.');
+    }
+    // Managers can only update employee-role users, not other managers or admins
+    const targetUser = await User.findOne({ employeeId: id }).lean();
+    if (targetUser && targetUser.role !== 'employee') {
+      throw ApiError.forbidden('Managers can only update employee records, not other managers or admins.');
     }
     allowedFields = ['status'];
   } else {

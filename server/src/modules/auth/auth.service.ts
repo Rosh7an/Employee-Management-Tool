@@ -75,6 +75,12 @@ export async function login(input: LoginInput) {
     ? await Employee.findById(user.employeeId)
     : null;
 
+  if (employee?.status === 'terminated') {
+    throw ApiError.forbidden(
+      'Your account has been deactivated. Please contact your administrator.'
+    );
+  }
+
   const token = generateToken({
     userId: user._id.toString(),
     role: user.role,
