@@ -16,18 +16,24 @@ export async function getByEmployee(req: Request, res: Response): Promise<void> 
 
 export async function create(req: Request, res: Response): Promise<void> {
   const input = createPerformanceSchema.parse(req.body);
-  const review = await service.create(input, req.user.employeeId!, req.user.role);
+  const reviewerId = req.user.employeeId;
+  if (!reviewerId) throw new Error('No linked employee record for this account.');
+  const review = await service.create(input, reviewerId, req.user.role);
   res.status(201).json(success(review));
 }
 
 export async function update(req: Request, res: Response): Promise<void> {
   const input = updatePerformanceSchema.parse(req.body);
-  const review = await service.update(String(req.params.id), input, req.user.role, req.user.employeeId!);
+  const reviewerId = req.user.employeeId;
+  if (!reviewerId && req.user.role !== 'admin') throw new Error('No linked employee record for this account.');
+  const review = await service.update(String(req.params.id), input, req.user.role, reviewerId ?? '');
   res.json(success(review));
 }
 
 export async function remove(req: Request, res: Response): Promise<void> {
-  await service.remove(String(req.params.id), req.user.role, req.user.employeeId!);
+  const reviewerId = req.user.employeeId;
+  if (!reviewerId && req.user.role !== 'admin') throw new Error('No linked employee record for this account.');
+  await service.remove(String(req.params.id), req.user.role, reviewerId ?? '');
   res.json(success(null));
 }
 

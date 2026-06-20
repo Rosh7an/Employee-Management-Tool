@@ -1,6 +1,7 @@
 import Payroll from '../../models/Payroll';
 import Employee from '../../models/Employee';
 import { ApiError } from '../../shared/utils/ApiError';
+import { escapeRegex } from '../../shared/utils/escapeRegex';
 import { parsePagination, buildMeta } from '../../shared/utils/pagination';
 import { Request } from 'express';
 import type { CreatePayrollInput } from './payroll.schema';
@@ -18,10 +19,10 @@ export async function getAll(req: Request) {
     const mon = MONTHS[qMonth - 1] || '';
     if (mon) filter.payPeriod = `${mon} ${qYear}`;
   } else if (qYear) {
-    filter.payPeriod = { $regex: qYear };
+    filter.payPeriod = { $regex: escapeRegex(qYear) };
   } else if (qMonth) {
     const mon = MONTHS[qMonth - 1] || '';
-    if (mon) filter.payPeriod = { $regex: `^${mon}` };
+    if (mon) filter.payPeriod = { $regex: `^${escapeRegex(mon)}` };
   } else if (req.query.payPeriod) {
     filter.payPeriod = req.query.payPeriod;
   }

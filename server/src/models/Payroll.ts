@@ -30,6 +30,8 @@ const payrollSchema = new Schema<IPayrollDocument>(
   { timestamps: true }
 );
 
+payrollSchema.index({ employeeId: 1, payPeriod: 1 }, { unique: true });
+
 const Payroll: Model<IPayrollDocument> =
   mongoose.models.Payroll ||
   mongoose.model<IPayrollDocument>('Payroll', payrollSchema);

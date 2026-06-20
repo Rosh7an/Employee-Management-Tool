@@ -5,6 +5,7 @@ import LeaveRequest from '../../models/LeaveRequest';
 import User from '../../models/User';
 
 import { ApiError } from '../../shared/utils/ApiError';
+import { escapeRegex } from '../../shared/utils/escapeRegex';
 import { parsePagination, buildMeta } from '../../shared/utils/pagination';
 import { Request } from 'express';
 import type { CreateEmployeeInput, UpdateEmployeeInput } from './employees.schema';
@@ -38,7 +39,7 @@ export async function getAll(req: Request) {
     const orClauses = (
       await Promise.all(
         tokens.map(async (token) => {
-          const re = new RegExp(token, 'i');
+          const re = new RegExp(escapeRegex(token), 'i');
           const matchedDepts = await Department.find({ name: re }, '_id').lean();
           return [
             { employeeId: re },
@@ -180,9 +181,9 @@ export async function terminate(id: string) {
   emp.status = 'terminated';
   await emp.save();
 
-  // Auto-reject all pending leave requests
+  // Auto-reject all pending and approved leave requests
   await LeaveRequest.updateMany(
-    { employeeId: id, status: 'pending' },
+    { employeeId: id, status: { $in: ['pending', 'approved'] } },
     { status: 'rejected', reviewedAt: new Date() }
   );
 

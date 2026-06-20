@@ -38,9 +38,9 @@ export async function update(id: string, input: UpdateMilestoneInput, userId: st
 }
 
 export async function remove(id: string, userId: string, role: string) {
-  const m = await Milestone.findById(id);
+  const m = await Milestone.findById(id).lean();
   if (!m) throw ApiError.notFound('Milestone not found.');
   if (role !== 'admin' && m.createdBy.toString() !== userId) throw ApiError.forbidden();
-  if (m.status !== 'not-started') throw ApiError.conflict('Only not-started milestones can be deleted.');
-  await m.deleteOne();
+  const deleted = await Milestone.findOneAndDelete({ _id: id, status: 'not-started' });
+  if (!deleted) throw ApiError.conflict('Only not-started milestones can be deleted.');
 }

@@ -1,5 +1,6 @@
 import AuditLog from '../../models/AuditLog';
 import User from '../../models/User';
+import { escapeRegex } from '../../shared/utils/escapeRegex';
 import { parsePagination, buildMeta } from '../../shared/utils/pagination';
 import { Request } from 'express';
 
@@ -9,7 +10,7 @@ export async function getAll(req: Request) {
   const filter: Record<string, unknown> = {};
 
   if (req.query.search) {
-    const re = new RegExp(String(req.query.search), 'i');
+    const re = new RegExp(escapeRegex(String(req.query.search)), 'i');
     const matchedUsers = await User.find({ name: re }, '_id').lean();
     filter.$or = [
       { action: re },

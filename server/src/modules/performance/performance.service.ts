@@ -15,7 +15,15 @@ export async function getAll(req: Request) {
     const deptEmployees = await Employee.find({ department: departmentId }, '_id').lean();
     filter.employeeId = { $in: deptEmployees.map((e) => e._id) };
   }
-  if (req.query.employeeId && role !== 'employee') filter.employeeId = req.query.employeeId;
+  if (req.query.employeeId && role !== 'employee') {
+    if (role === 'manager') {
+      const target = await Employee.findById(String(req.query.employeeId), 'department').lean();
+      if (!target || target.department?.toString() !== departmentId) {
+        throw ApiError.forbidden('You can only view performance reviews for employees in your department.');
+      }
+    }
+    filter.employeeId = req.query.employeeId;
+  }
   const [reviews, total] = await Promise.all([
     PerformanceReview.find(filter).populate('employeeId', 'name employeeId designation').populate('reviewerId', 'name employeeId').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     PerformanceReview.countDocuments(filter),

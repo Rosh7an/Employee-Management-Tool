@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { ApiError } from '../utils/ApiError';
 import { ZodError } from 'zod';
 
@@ -26,6 +27,14 @@ export function errorHandler(
         message: first.message,
         field: first.path.join('.') || null,
       },
+    });
+    return;
+  }
+
+  if (err instanceof mongoose.Error.CastError) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'BAD_REQUEST', message: 'Invalid ID format.', field: err.path },
     });
     return;
   }
