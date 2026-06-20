@@ -102,6 +102,88 @@ describe('PATCH /api/leave/:id/review', () => {
   });
 });
 
+// ─── GET /api/leave/:id ─────────────────────────────────────────────────────
+describe('GET /api/leave/:id', () => {
+  let leaveId: string;
+
+  beforeEach(async () => {
+    const res = await request(app)
+      .post('/api/leave')
+      .set('Authorization', `Bearer ${users.employeeToken}`)
+      .send({ type: 'casual', startDate: futureStart, endDate: futureEnd, reason: 'Detail test' });
+    leaveId = res.body.data._id;
+  });
+
+  it('employee can view their own leave request → 200 with populated fields', async () => {
+    const res = await request(app)
+      .get(`/api/leave/${leaveId}`)
+      .set('Authorization', `Bearer ${users.employeeToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data._id).toBe(leaveId);
+    expect(res.body.data.employeeId).toBeDefined();
+    expect(res.body.data.type).toBe('casual');
+    expect(res.body.data.status).toBe('pending');
+  });
+
+  it('admin can view any leave request → 200', async () => {
+    const res = await request(app)
+      .get(`/api/leave/${leaveId}`)
+      .set('Authorization', `Bearer ${users.adminToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data._id).toBe(leaveId);
+  });
+
+  it('manager can view leave for an employee in their department → 200', async () => {
+    const res = await request(app)
+      .get(`/api/leave/${leaveId}`)
+      .set('Authorization', `Bearer ${users.managerToken}`);
+    expect(res.status).toBe(200);
+  });
+
+  it('employee cannot view another employee\'s leave → 403', async () => {
+    // Create a second employee and their leave
+    const emp2Res = await request(app)
+      .post('/api/employees')
+      .set('Authorization', `Bearer ${users.adminToken}`)
+      .send({
+        name: 'Other Employee',
+        email: 'other@test.com',
+        designation: 'Designer',
+        department: users.departmentId,
+        dateOfJoining: new Date().toISOString(),
+      });
+    const emp2Id = emp2Res.body.data._id;
+
+    // Create leave for emp2 directly via model
+    const { default: LeaveRequest } = await import('../models/LeaveRequest');
+    const otherLeave = await LeaveRequest.create({
+      employeeId: emp2Id,
+      type: 'sick',
+      startDate: new Date(futureStart),
+      endDate: new Date(futureEnd),
+      reason: 'Other person leave',
+      status: 'pending',
+    });
+
+    const res = await request(app)
+      .get(`/api/leave/${otherLeave._id}`)
+      .set('Authorization', `Bearer ${users.employeeToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 404 for non-existent leave ID', async () => {
+    const res = await request(app)
+      .get('/api/leave/000000000000000000000000')
+      .set('Authorization', `Bearer ${users.adminToken}`);
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 401 without auth', async () => {
+    const res = await request(app).get(`/api/leave/${leaveId}`);
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('GET /api/leave', () => {
   beforeEach(async () => {
     await request(app)

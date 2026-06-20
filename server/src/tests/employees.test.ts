@@ -90,6 +90,42 @@ describe('POST /api/employees', () => {
   });
 });
 
+// ─── GET /api/employees?managersOnly=true ───────────────────────────────────
+describe('GET /api/employees?managersOnly=true', () => {
+  it('returns only employees whose User record has role=manager', async () => {
+    const res = await request(app)
+      .get('/api/employees?managersOnly=true')
+      .set('Authorization', `Bearer ${users.adminToken}`);
+    expect(res.status).toBe(200);
+    const employees = res.body.data.employees ?? res.body.data;
+    // Seed has exactly one manager-role user (managerEmp)
+    expect(employees.length).toBe(1);
+    expect(employees[0]._id).toBe(users.managerEmployeeId);
+  });
+
+  it('does not include admin or employee-role users', async () => {
+    const res = await request(app)
+      .get('/api/employees?managersOnly=true')
+      .set('Authorization', `Bearer ${users.adminToken}`);
+    const employees = res.body.data.employees ?? res.body.data;
+    const ids = employees.map((e: any) => e._id);
+    expect(ids).not.toContain(users.adminEmployeeId);
+    expect(ids).not.toContain(users.employeeRecordId);
+  });
+
+  it('returns empty array when no manager-role users exist', async () => {
+    // Remove the manager user's role by promoting to admin
+    const User = (await import('../models/User')).default;
+    await User.findOneAndUpdate({ employeeId: users.managerEmployeeId }, { role: 'admin' });
+
+    const res = await request(app)
+      .get('/api/employees?managersOnly=true')
+      .set('Authorization', `Bearer ${users.adminToken}`);
+    const employees = res.body.data.employees ?? res.body.data;
+    expect(employees.length).toBe(0);
+  });
+});
+
 describe('GET /api/employees/:id', () => {
   it('admin can view any employee', async () => {
     const res = await request(app)
